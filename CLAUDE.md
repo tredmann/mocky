@@ -1,0 +1,90 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+# Start all dev processes (server, queue, logs, vite)
+composer dev
+
+# Run all tests
+php artisan test
+
+# Run a single test file
+php artisan test tests/Feature/MockEndpointTest.php
+
+# Run a single test by name
+php artisan test --filter "matches condition on json body field"
+
+# Fix code style
+./vendor/bin/pint
+
+# Check code style without fixing
+./vendor/bin/pint --test
+
+# Static analysis
+./vendor/bin/phpstan analyse --memory-limit=512M
+```
+
+Tests use an in-memory SQLite database — no setup required.
+
+## Architecture
+
+This is a **configurable mock API server** built with Laravel 12, Livewire 4, Flux (UI components), and Pest.
+
+### Core concept
+
+Users define **endpoints** with a unique slug. Any HTTP client can hit `/mock/{slug}` and receive the configured response. The mock controller evaluates conditional responses in priority order before falling back to the default.
+
+### Request flow
+
+```
+ANY /mock/{endpoint} → MockController::handle()
+    → check is_active, method match
+    → evaluate ConditionalResponse::matches() in priority order
+    → log to EndpointLog
+    → return response
+```
+
+Route model binding on `Endpoint` uses `slug` as the key (`getRouteKeyName()`). The route also accepts extra path segments via `/mock/{endpoint}/{path?}` with a wildcard, captured as `$path` and split into an array for path-segment conditions.
+
+### Conditional response matching
+
+Each `ConditionalResponse` has one condition: a **source** (`body`, `query`, `header`, `path`), a **field**, an **operator** (`equals`, `not_equals`, `contains`), and a **value**. Matching logic lives in `ConditionalResponse::matches(Request $request, array $pathSegments)`.
+
+- `body` — uses `data_get()` with dot notation on the JSON body
+- `query` — query parameter by name
+- `header` — header by name (case-insensitive)
+- `path` — segment index (0-based) from the extra URL segments after the slug
+
+### Models
+
+`User` uses UUIDs as primary key (`HasUuids` trait). All related foreign keys (`user_id`, etc.) are `foreignUuid`. `ProfileValidationRules` type-hints `int|string|null` for user IDs to accommodate UUIDs.
+
+### Services
+
+- `EndpointExportService` — serialises an endpoint + its conditional responses to a JSON streamed download
+- `EndpointImportService` — creates an endpoint + conditional responses from the exported JSON array; regenerates the slug if it already exists
+- `CurlCommandBuilder` — builds a representative curl command for an endpoint's default response or a conditional response. For `not_equals` conditions the example value is `"other"` (not the condition value) so the command actually triggers the condition.
+
+### Artisan commands
+
+- `endpoint:export {slug} {--output=}` — exports an endpoint to a JSON file (defaults to `{slug}.json`)
+- `endpoint:import {file} {--user=}` — imports from a JSON file; `--user` accepts email or UUID; defaults to the first user
+
+### UI structure
+
+Livewire single-file components live in `resources/views/pages/`. The layout (`layouts::app`) is applied automatically via Livewire's `component_layout` config — **do not wrap page components in `<x-layouts::app>`**.
+
+Page flow: Dashboard → Detail (`endpoints.show`) → Edit (`endpoints.edit`). Logs accessible from the detail page.
+
+### Code style
+
+Pint uses the Laravel preset with `fully_qualified_strict_types` enabled — FQCNs in type hints are automatically converted to `use` imports on `pint` runs.
+
+Eloquent relationships must include generic PHPDoc for Larastan, e.g.:
+```php
+/** @return HasMany<ConditionalResponse, $this> */
+public function conditionalResponses(): HasMany
+```

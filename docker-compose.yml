@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8090:80"
+    volumes:
+      - sqlite:/app/database
+      - storage:/app/storage
+    environment:
+      APP_NAME: Mocky
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_URL: http://localhost
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /app/database/database.sqlite
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+
+volumes:
+  sqlite:
+  storage:
