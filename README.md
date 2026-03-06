@@ -2,6 +2,9 @@
 
 A configurable mock REST API server. Define endpoints through a web UI, then point any HTTP client at them to receive the responses you configured — useful for testing, prototyping, and simulating third-party APIs.
 
+[![mocky screenshot](/public/screenshot.png "Mocky Dashboard")]
+
+
 ## Features
 
 - Create endpoints for any HTTP method (GET, POST, PUT, PATCH, DELETE)
