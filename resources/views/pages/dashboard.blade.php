@@ -129,8 +129,11 @@ new #[Title('Dashboard')] class extends Component {
                 <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
                     @foreach ($this->endpoints as $endpoint)
                         <tr class="bg-white dark:bg-neutral-900">
-                            <td class="px-4 py-3 font-medium">
-                                <a href="{{ route('endpoints.show', $endpoint) }}" class="hover:underline">{{ $endpoint->name }}</a>
+                            <td class="px-4 py-3">
+                                <a href="{{ route('endpoints.show', $endpoint) }}" class="font-medium hover:underline">{{ $endpoint->name }}</a>
+                                @if ($endpoint->description)
+                                    <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{{ Str::limit($endpoint->description, 80) }}</p>
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <flux:badge size="sm" color="{{ match($endpoint->method) {

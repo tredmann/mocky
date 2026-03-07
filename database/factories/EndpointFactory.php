@@ -13,6 +13,7 @@ class EndpointFactory extends Factory
         return [
             'user_id' => User::factory(),
             'name' => $this->faker->words(3, true),
+            'description' => $this->faker->optional()->sentence(),
             'slug' => Str::uuid(),
             'method' => 'GET',
             'status_code' => 200,

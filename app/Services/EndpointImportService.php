@@ -19,6 +19,7 @@ class EndpointImportService
         /** @var Endpoint $endpoint */
         $endpoint = $user->endpoints()->create([
             'name' => $data['name'],
+            'description' => $data['description'] ?? null,
             'slug' => $slug,
             'method' => $data['method'],
             'status_code' => $data['status_code'],

@@ -6,6 +6,7 @@ use Livewire\Component;
 
 new #[Title('New Endpoint')] class extends Component {
     public string $name = '';
+    public string $description = '';
     public string $method = 'GET';
     public int $status_code = 200;
     public string $content_type = 'application/json';
@@ -15,6 +16,7 @@ new #[Title('New Endpoint')] class extends Component {
     {
         $validated = $this->validate([
             'name'          => ['required', 'string', 'max:255'],
+            'description'   => ['nullable', 'string', 'max:1000'],
             'method'        => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
             'status_code'   => ['required', 'integer', 'min:100', 'max:599'],
             'content_type'  => ['required', 'string', 'max:255'],
@@ -43,6 +45,12 @@ new #[Title('New Endpoint')] class extends Component {
                 <flux:label>Name</flux:label>
                 <flux:input wire:model="name" placeholder="e.g. Get user by ID" autofocus />
                 <flux:error name="name" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Description</flux:label>
+                <flux:textarea wire:model="description" rows="2" placeholder="Optional description for this endpoint" />
+                <flux:error name="description" />
             </flux:field>
 
             <flux:field>

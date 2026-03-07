@@ -12,6 +12,7 @@ class EndpointExportService
     {
         return [
             'name' => $endpoint->name,
+            'description' => $endpoint->description,
             'slug' => $endpoint->slug,
             'method' => $endpoint->method,
             'status_code' => $endpoint->status_code,

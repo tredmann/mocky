@@ -11,6 +11,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
     // Endpoint fields
     public string $name = '';
+    public string $description = '';
     public string $method = 'GET';
 
     // Default response fields
@@ -37,6 +38,7 @@ new #[Title('Edit Endpoint')] class extends Component {
         $this->cr_condition_source = $this->endpoint->method === 'GET' ? 'query' : 'body';
 
         $this->name          = $this->endpoint->name;
+        $this->description   = $this->endpoint->description ?? '';
         $this->method        = $this->endpoint->method;
         $this->status_code   = $this->endpoint->status_code;
         $this->content_type  = $this->endpoint->content_type;
@@ -58,6 +60,7 @@ new #[Title('Edit Endpoint')] class extends Component {
     {
         $validated = $this->validate([
             'name'          => ['required', 'string', 'max:255'],
+            'description'   => ['nullable', 'string', 'max:1000'],
             'method'        => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
             'status_code'   => ['required', 'integer', 'min:100', 'max:599'],
             'content_type'  => ['required', 'string', 'max:255'],
@@ -156,6 +159,12 @@ new #[Title('Edit Endpoint')] class extends Component {
                 <flux:label>Name</flux:label>
                 <flux:input wire:model="name" />
                 <flux:error name="name" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Description</flux:label>
+                <flux:textarea wire:model="description" rows="2" placeholder="Optional description for this endpoint" />
+                <flux:error name="description" />
             </flux:field>
 
             <flux:field>

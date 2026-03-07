@@ -15,6 +15,7 @@ class Endpoint extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'description',
         'slug',
         'method',
         'status_code',
