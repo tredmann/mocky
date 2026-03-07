@@ -1,6 +1,8 @@
 <?php
 
 use App\Services\CollectionImportService;
+use App\Services\OpenApiImportService;
+use App\Services\PostmanImportService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -12,6 +14,7 @@ new #[Title('Dashboard')] class extends Component {
     public $importFile = null;
     public bool $showImport = false;
     public ?string $importError = null;
+    public string $importType = 'native';
 
     #[Computed]
     public function collections()
@@ -19,29 +22,56 @@ new #[Title('Dashboard')] class extends Component {
         return auth()->user()->endpointCollections()->withCount('endpoints')->latest()->get();
     }
 
-    public function importCollection(CollectionImportService $service): void
-    {
-        $this->validate(['importFile' => ['required', 'file', 'mimes:json', 'max:5120']]);
+    public function importCollection(
+        CollectionImportService $collectionService,
+        OpenApiImportService $openApiService,
+        PostmanImportService $postmanService,
+    ): void {
+        $rules = $this->importType === 'openapi'
+            ? ['required', 'file', 'max:5120']
+            : ['required', 'file', 'mimes:json', 'max:5120'];
+        $this->validate(['importFile' => $rules]);
 
-        $data = json_decode(file_get_contents($this->importFile->getRealPath()), true);
+        try {
+            if ($this->importType === 'openapi') {
+                $openApiService->importFromFile(auth()->user(), $this->importFile->getRealPath());
+            } elseif ($this->importType === 'postman') {
+                $data = json_decode(file_get_contents($this->importFile->getRealPath()), true);
 
-        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($data)) {
-            $this->importError = 'Invalid JSON file.';
+                if (json_last_error() !== JSON_ERROR_NONE || ! is_array($data)) {
+                    $this->importError = 'Invalid JSON file.';
+
+                    return;
+                }
+
+                $postmanService->import(auth()->user(), $data);
+            } else {
+                $data = json_decode(file_get_contents($this->importFile->getRealPath()), true);
+
+                if (json_last_error() !== JSON_ERROR_NONE || ! is_array($data)) {
+                    $this->importError = 'Invalid JSON file.';
+
+                    return;
+                }
+
+                if (empty($data['name'])) {
+                    $this->importError = 'Missing required field: name';
+
+                    return;
+                }
+
+                $collectionService->import(auth()->user(), $data);
+            }
+        } catch (\InvalidArgumentException $e) {
+            $this->importError = $e->getMessage();
 
             return;
         }
-
-        if (empty($data['name'])) {
-            $this->importError = 'Missing required field: name';
-
-            return;
-        }
-
-        $service->import(auth()->user(), $data);
 
         $this->showImport = false;
         $this->importFile = null;
         $this->importError = null;
+        $this->importType = 'native';
         unset($this->collections);
     }
 
@@ -50,6 +80,7 @@ new #[Title('Dashboard')] class extends Component {
         $this->showImport = false;
         $this->importFile = null;
         $this->importError = null;
+        $this->importType = 'native';
     }
 }; ?>
 
@@ -69,8 +100,17 @@ new #[Title('Dashboard')] class extends Component {
             <flux:heading size="lg">Import Collection</flux:heading>
 
             <flux:field>
-                <flux:label>JSON File</flux:label>
-                <flux:input wire:model="importFile" type="file" accept=".json" />
+                <flux:label>Format</flux:label>
+                <flux:select wire:model.live="importType">
+                    <flux:select.option value="native">Native JSON</flux:select.option>
+                    <flux:select.option value="openapi">OpenAPI (JSON / YAML)</flux:select.option>
+                    <flux:select.option value="postman">Postman Collection</flux:select.option>
+                </flux:select>
+            </flux:field>
+
+            <flux:field>
+                <flux:label>File</flux:label>
+                <flux:input wire:model="importFile" type="file" accept="{{ $importType === 'openapi' ? '.json,.yaml,.yml' : '.json' }}" />
                 <flux:error name="importFile" />
             </flux:field>
 
