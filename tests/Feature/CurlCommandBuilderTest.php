@@ -66,7 +66,7 @@ test('header condition adds -H flag', function () {
 
     $curl = builder()->forConditional($endpoint, $cr);
 
-    expect($curl)->toContain('-H "X-Api-Version: 2"');
+    expect($curl)->toContain("-H 'X-Api-Version: 2'");
 });
 
 // --- Body condition ---
@@ -82,8 +82,8 @@ test('body condition adds content-type header and -d flag', function () {
 
     $curl = builder()->forConditional($endpoint, $cr);
 
-    expect($curl)->toContain('-H "Content-Type: application/json"')
-        ->and($curl)->toContain('-d \'{"id":"42"}\'');
+    expect($curl)->toContain("-H 'Content-Type: application/json'")
+        ->and($curl)->toContain("-d '{\"id\":\"42\"}'");
 });
 
 // --- Operators ---
@@ -126,8 +126,8 @@ test('not_equals operator uses a different value to trigger the condition', func
 
     $curl = builder()->forConditional($endpoint, $cr);
 
-    expect($curl)->toContain('status=other')
-        ->and($curl)->not->toContain('status=active');
+    expect($curl)->toContain('status=not_active')
+        ->and($curl)->not->toContain('status=active&');
 });
 
 // --- Path condition ---

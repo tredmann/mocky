@@ -51,14 +51,14 @@ class ConditionalResponse extends Model
         $actual = (string) $actual;
         $expected = $this->condition_value;
 
-        if ($this->condition_operator === 'equals') {
-            return $actual === $expected;
-        }
+        /** @var string $operator */
+        $operator = $this->condition_operator;
 
-        if ($this->condition_operator === 'not_equals') {
-            return $actual !== $expected;
-        }
-
-        return str_contains($actual, $expected);
+        return match ($operator) {
+            'equals' => $actual === $expected,
+            'not_equals' => $actual !== $expected,
+            'contains' => str_contains($actual, $expected),
+            default => false,
+        };
     }
 }

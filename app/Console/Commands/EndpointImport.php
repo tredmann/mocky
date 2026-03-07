@@ -17,14 +17,23 @@ class EndpointImport extends Command
     public function handle(EndpointImportService $importService): int
     {
         $file = $this->argument('file');
+        $realPath = realpath($file);
 
-        if (! file_exists($file)) {
+        if ($realPath === false) {
             $this->error("File [{$file}] not found.");
 
             return self::FAILURE;
         }
 
-        $data = json_decode(file_get_contents($file), true);
+        $maxSize = 5 * 1024 * 1024; // 5MB
+
+        if (filesize($realPath) > $maxSize) {
+            $this->error('File is too large (max 5MB).');
+
+            return self::FAILURE;
+        }
+
+        $data = json_decode(file_get_contents($realPath), true);
 
         if (! is_array($data)) {
             $this->error('Invalid JSON file.');
