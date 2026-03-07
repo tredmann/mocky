@@ -4,9 +4,17 @@ use App\Models\User;
 use Laravel\Fortify\Features;
 
 test('login screen can be rendered', function () {
+    User::factory()->create();
+
     $response = $this->get(route('login'));
 
     $response->assertOk();
+});
+
+test('login screen redirects to register when no users exist', function () {
+    $response = $this->get(route('login'));
+
+    $response->assertRedirect(route('register'));
 });
 
 test('users can authenticate using the login screen', function () {
