@@ -1,0 +1,28 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Petstore API (JSON)",
+    "description": "A sample API in JSON format",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/pets": {
+      "get": {
+        "operationId": "listPets",
+        "summary": "List all pets",
+        "responses": {
+          "200": {
+            "description": "A list of pets",
+            "content": {
+              "application/json": {
+                "example": [
+                  {"id": 1, "name": "Buddy"}
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
