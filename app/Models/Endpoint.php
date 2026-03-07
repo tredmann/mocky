@@ -30,11 +30,6 @@ class Endpoint extends Model
         'status_code' => 'integer',
     ];
 
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

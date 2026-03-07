@@ -168,8 +168,8 @@ new #[Title('Edit Endpoint')] class extends Component {
 
             <flux:field>
                 <flux:label>Slug</flux:label>
-                <flux:input wire:model="slug" />
-                <flux:description>The URL path for this endpoint: /mock/<strong>your-slug</strong></flux:description>
+                <flux:input wire:model.live.debounce.300ms="slug" />
+                <flux:description>The URL path for this endpoint: <code>{{ $endpoint->collection->mock_url_prefix }}/{{ $slug ?: 'your-slug' }}</code></flux:description>
                 <flux:error name="slug" />
             </flux:field>
 
