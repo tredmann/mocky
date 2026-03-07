@@ -2,6 +2,7 @@
 
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
+use App\Rules\ValidResponseSyntax;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -64,7 +65,7 @@ new #[Title('Edit Endpoint')] class extends Component {
             'method'        => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
             'status_code'   => ['required', 'integer', 'min:100', 'max:599'],
             'content_type'  => ['required', 'string', 'max:255'],
-            'response_body' => ['nullable', 'string'],
+            'response_body' => ['nullable', 'string', new ValidResponseSyntax],
         ]);
 
         $this->endpoint->update($validated);
@@ -80,7 +81,7 @@ new #[Title('Edit Endpoint')] class extends Component {
             'cr_condition_value'    => ['required', 'string', 'max:255'],
             'cr_status_code'        => ['required', 'integer', 'min:100', 'max:599'],
             'cr_content_type'       => ['required', 'string', 'max:255'],
-            'cr_response_body'      => ['nullable', 'string'],
+            'cr_response_body'      => ['nullable', 'string', new ValidResponseSyntax('cr_content_type')],
         ], [], [
             'cr_condition_source'   => 'source',
             'cr_condition_field'    => 'field',
@@ -130,7 +131,7 @@ new #[Title('Edit Endpoint')] class extends Component {
     }
 }; ?>
 
-<div class="mx-auto w-full max-w-2xl space-y-6">
+<div class="mx-auto w-full max-w-2xl space-y-6" x-data="{ responseBodyError: false, crResponseBodyError: false }" @editor-error.window="if ($event.detail.field === 'response_body') responseBodyError = $event.detail.hasError; if ($event.detail.field === 'cr_response_body') crResponseBodyError = $event.detail.hasError">
 
     {{-- Header --}}
     <div class="flex items-center gap-3">
@@ -196,7 +197,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
                 <flux:field>
                     <flux:label>Content Type</flux:label>
-                    <flux:select wire:model="content_type">
+                    <flux:select wire:model.live="content_type">
                         <flux:select.option value="application/json">application/json</flux:select.option>
                         <flux:select.option value="text/plain">text/plain</flux:select.option>
                         <flux:select.option value="text/html">text/html</flux:select.option>
@@ -208,7 +209,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
             <flux:field>
                 <flux:label>Response Body</flux:label>
-                <flux:textarea wire:model="response_body" rows="8" class="font-mono text-sm" />
+                <x-code-editor wire="response_body" :content-type="$content_type" content-type-wire="content_type" />
                 <flux:error name="response_body" />
             </flux:field>
         </flux:card>
@@ -218,7 +219,7 @@ new #[Title('Edit Endpoint')] class extends Component {
                 <flux:text class="text-green-600 dark:text-green-400">Saved!</flux:text>
             @endif
             <flux:button href="{{ route('dashboard') }}" variant="ghost">Cancel</flux:button>
-            <flux:button type="submit" variant="primary" wire:click="$set('saved', false)">Save Changes</flux:button>
+            <flux:button type="submit" variant="primary" wire:click="$set('saved', false)" x-bind:disabled="responseBodyError">Save Changes</flux:button>
         </div>
 
     </form>
@@ -368,7 +369,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
                         <flux:field>
                             <flux:label>Content Type</flux:label>
-                            <flux:select wire:model="cr_content_type">
+                            <flux:select wire:model.live="cr_content_type">
                                 <flux:select.option value="application/json">application/json</flux:select.option>
                                 <flux:select.option value="text/plain">text/plain</flux:select.option>
                                 <flux:select.option value="text/html">text/html</flux:select.option>
@@ -380,14 +381,14 @@ new #[Title('Edit Endpoint')] class extends Component {
 
                     <flux:field>
                         <flux:label>Response Body</flux:label>
-                        <flux:textarea wire:model="cr_response_body" rows="6" class="font-mono text-sm" />
+                        <x-code-editor wire="cr_response_body" :content-type="$cr_content_type" content-type-wire="cr_content_type" />
                         <flux:error name="cr_response_body" />
                     </flux:field>
                 </div>
 
                 <div class="flex justify-end gap-3">
                     <flux:button wire:click="resetConditionalForm" variant="ghost">Cancel</flux:button>
-                    <flux:button wire:click="addConditionalResponse" variant="primary">Add</flux:button>
+                    <flux:button wire:click="addConditionalResponse" variant="primary" x-bind:disabled="crResponseBodyError">Add</flux:button>
                 </div>
             </flux:card>
         @endif

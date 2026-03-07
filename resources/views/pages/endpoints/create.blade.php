@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Endpoint;
+use App\Rules\ValidResponseSyntax;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -20,7 +21,7 @@ new #[Title('New Endpoint')] class extends Component {
             'method'        => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
             'status_code'   => ['required', 'integer', 'min:100', 'max:599'],
             'content_type'  => ['required', 'string', 'max:255'],
-            'response_body' => ['nullable', 'string'],
+            'response_body' => ['nullable', 'string', new ValidResponseSyntax],
         ]);
 
         $endpoint = auth()->user()->endpoints()->create($validated);
@@ -35,7 +36,7 @@ new #[Title('New Endpoint')] class extends Component {
         <flux:heading size="xl">New Endpoint</flux:heading>
     </div>
 
-    <form wire:submit="save" class="space-y-4">
+    <form wire:submit="save" class="space-y-4" x-data="{ editorHasError: false }" @editor-error.window="if ($event.detail.field === 'response_body') editorHasError = $event.detail.hasError">
 
         {{-- Request --}}
         <flux:card class="space-y-4">
@@ -82,7 +83,7 @@ new #[Title('New Endpoint')] class extends Component {
 
                 <flux:field>
                     <flux:label>Content Type</flux:label>
-                    <flux:select wire:model="content_type">
+                    <flux:select wire:model.live="content_type">
                         <flux:select.option value="application/json">application/json</flux:select.option>
                         <flux:select.option value="text/plain">text/plain</flux:select.option>
                         <flux:select.option value="text/html">text/html</flux:select.option>
@@ -94,14 +95,14 @@ new #[Title('New Endpoint')] class extends Component {
 
             <flux:field>
                 <flux:label>Response Body</flux:label>
-                <flux:textarea wire:model="response_body" rows="8" placeholder='{"message": "ok"}' class="font-mono text-sm" />
+                <x-code-editor wire="response_body" :content-type="$content_type" content-type-wire="content_type" />
                 <flux:error name="response_body" />
             </flux:field>
         </flux:card>
 
         <div class="flex justify-end gap-3">
             <flux:button href="{{ route('dashboard') }}" variant="ghost">Cancel</flux:button>
-            <flux:button type="submit" variant="primary">Create Endpoint</flux:button>
+            <flux:button type="submit" variant="primary" x-bind:disabled="editorHasError">Create Endpoint</flux:button>
         </div>
 
     </form>

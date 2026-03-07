@@ -47,6 +47,26 @@
     }
 }
 
+.code-editor .cm-editor {
+    @apply rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm;
+    min-height: 10rem;
+    max-height: 24rem;
+}
+
+.code-editor .cm-editor.cm-focused {
+    @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
+}
+
+.code-editor .cm-scroller {
+    @apply rounded-lg;
+    min-height: 10rem;
+    max-height: 24rem;
+}
+
+.code-editor .cm-gutters {
+    @apply rounded-l-lg;
+}
+
 [data-flux-field]:not(ui-radio, ui-checkbox) {
     @apply grid gap-2;
 }
