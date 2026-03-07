@@ -37,9 +37,7 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $input['password'],
         ]);
 
-        if (User::count() === 1) {
-            $user->markEmailAsVerified();
-        }
+        $user->markEmailAsVerified();
 
         return $user;
     }
