@@ -2,12 +2,14 @@
 
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Rules\ValidResponseSyntax;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Edit Endpoint')] class extends Component {
+    public EndpointCollection $collection;
     public Endpoint $endpoint;
 
     // Endpoint fields
@@ -73,7 +75,7 @@ new #[Title('Edit Endpoint')] class extends Component {
         ]);
 
         $this->endpoint->update($validated);
-        $this->redirectRoute('endpoints.show', $this->endpoint, navigate: true);
+        $this->redirectRoute('endpoints.show', [$this->endpoint->collection, $this->endpoint], navigate: true);
     }
 
     public function addConditionalResponse(): void
@@ -139,7 +141,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
     {{-- Header --}}
     <div class="flex items-center gap-3">
-        <flux:button href="{{ route('endpoints.show', $endpoint) }}" variant="ghost" icon="arrow-left" size="sm" />
+        <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">Edit Endpoint</flux:heading>
     </div>
 
@@ -229,7 +231,7 @@ new #[Title('Edit Endpoint')] class extends Component {
             @if ($saved)
                 <flux:text class="text-green-600 dark:text-green-400">Saved!</flux:text>
             @endif
-            <flux:button href="{{ route('endpoints.show', $endpoint) }}" variant="ghost">Cancel</flux:button>
+            <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost">Cancel</flux:button>
             <flux:button type="submit" variant="primary" wire:click="$set('saved', false)" x-bind:disabled="responseBodyError">Save Changes</flux:button>
         </div>
 

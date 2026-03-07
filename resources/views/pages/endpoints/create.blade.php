@@ -38,7 +38,7 @@ new #[Title('New Endpoint')] class extends Component {
             'user_id' => auth()->id(),
         ]);
 
-        $this->redirectRoute('endpoints.show', $endpoint, navigate: true);
+        $this->redirectRoute('endpoints.show', [$this->collection, $endpoint], navigate: true);
     }
 }; ?>
 

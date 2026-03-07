@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Models\EndpointLog;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -10,6 +11,7 @@ use Livewire\WithPagination;
 new #[Title('Logs')] class extends Component {
     use WithPagination;
 
+    public EndpointCollection $collection;
     public Endpoint $endpoint;
     public ?int $expandedLog = null;
 
@@ -40,7 +42,7 @@ new #[Title('Logs')] class extends Component {
 
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-            <flux:button href="{{ route('endpoints.show', $endpoint) }}" variant="ghost" icon="arrow-left" size="sm" />
+            <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost" icon="arrow-left" size="sm" />
             <div>
                 <flux:heading size="xl">Logs</flux:heading>
                 <flux:subheading>{{ $endpoint->name }}</flux:subheading>

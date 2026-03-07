@@ -167,7 +167,7 @@ new #[Title('Collection')] class extends Component {
                     @foreach ($this->endpoints as $endpoint)
                         <tr class="bg-white dark:bg-neutral-900">
                             <td class="px-4 py-3">
-                                <a href="{{ route('endpoints.show', $endpoint) }}" class="font-medium hover:underline">{{ $endpoint->name }}</a>
+                                <a href="{{ route('endpoints.show', [$collection, $endpoint]) }}" class="font-medium hover:underline">{{ $endpoint->name }}</a>
                                 @if ($endpoint->description)
                                     <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{{ Str::limit($endpoint->description, 80) }}</p>
                                 @endif

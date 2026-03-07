@@ -12,10 +12,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('collections/{collection}', 'pages::collections.show')->name('collections.show');
     Route::livewire('collections/{collection}/edit', 'pages::collections.edit')->name('collections.edit');
 
-    Route::livewire('endpoints/create/{collection}', 'pages::endpoints.create')->name('endpoints.create');
-    Route::livewire('endpoints/{endpoint}', 'pages::endpoints.show')->name('endpoints.show');
-    Route::livewire('endpoints/{endpoint}/edit', 'pages::endpoints.edit')->name('endpoints.edit');
-    Route::livewire('endpoints/{endpoint}/logs', 'pages::endpoints.logs')->name('endpoints.logs');
+    Route::livewire('collections/{collection}/endpoints/create', 'pages::endpoints.create')->name('endpoints.create');
+    Route::livewire('collections/{collection}/endpoints/{endpoint}', 'pages::endpoints.show')->name('endpoints.show');
+    Route::livewire('collections/{collection}/endpoints/{endpoint}/edit', 'pages::endpoints.edit')->name('endpoints.edit');
+    Route::livewire('collections/{collection}/endpoints/{endpoint}/logs', 'pages::endpoints.logs')->name('endpoints.logs');
 });
 
 Route::any('/mock/{collectionSlug}/{endpointSlug}/{path?}', [MockController::class, 'handle'])

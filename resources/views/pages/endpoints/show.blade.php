@@ -2,6 +2,7 @@
 
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Services\CurlCommandBuilder;
 use App\Services\EndpointExportService;
 use Livewire\Attributes\Computed;
@@ -9,6 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Endpoint')] class extends Component {
+    public EndpointCollection $collection;
     public Endpoint $endpoint;
 
     public string $curlCommand = '';
@@ -81,7 +83,7 @@ new #[Title('Endpoint')] class extends Component {
         <div class="flex items-center gap-2">
             <flux:button wire:click="export" variant="ghost" icon="arrow-down-tray" />
             <flux:button wire:click="delete" wire:confirm="Delete this endpoint?" variant="ghost" icon="trash" />
-            <flux:button href="{{ route('endpoints.edit', $endpoint) }}" variant="primary" icon="pencil">
+            <flux:button href="{{ route('endpoints.edit', [$endpoint->collection, $endpoint]) }}" variant="primary" icon="pencil">
                 Edit
             </flux:button>
         </div>
@@ -177,7 +179,7 @@ new #[Title('Endpoint')] class extends Component {
     <div class="space-y-3">
         <div class="flex items-center justify-between">
             <flux:heading size="lg">Recent Requests</flux:heading>
-            <flux:button href="{{ route('endpoints.logs', $endpoint) }}" variant="ghost" size="sm" icon="document-text">
+            <flux:button href="{{ route('endpoints.logs', [$endpoint->collection, $endpoint]) }}" variant="ghost" size="sm" icon="document-text">
                 View all
             </flux:button>
         </div>

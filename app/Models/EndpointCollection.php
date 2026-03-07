@@ -29,11 +29,6 @@ class EndpointCollection extends Model
         });
     }
 
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
