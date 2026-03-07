@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('endpoint_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('endpoint_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('matched_conditional_response_id')->nullable()->constrained('conditional_responses')->nullOnDelete();
+            $table->foreignUuid('endpoint_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('matched_conditional_response_id')->nullable()->constrained('conditional_responses')->nullOnDelete();
             $table->string('request_method', 10);
             $table->string('request_ip', 45)->nullable();
             $table->text('request_user_agent')->nullable();

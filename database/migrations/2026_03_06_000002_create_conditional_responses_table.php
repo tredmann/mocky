@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('conditional_responses', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('endpoint_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('endpoint_id')->constrained()->cascadeOnDelete();
             $table->enum('condition_source', ['body', 'query', 'header']);
             $table->string('condition_field');
             $table->enum('condition_operator', ['equals', 'not_equals', 'contains']);
