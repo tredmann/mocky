@@ -78,7 +78,7 @@ new #[Title('Collection')] class extends Component {
     }
 }; ?>
 
-<div class="mx-auto w-full max-w-2xl space-y-6">
+<div class="w-full space-y-6">
 
     {{-- Header --}}
     <div class="flex items-center justify-between">
