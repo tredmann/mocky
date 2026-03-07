@@ -10,7 +10,7 @@ test('imports openapi yaml file via artisan command', function () {
     $this->artisan('openapi:import', [
         'file' => base_path('tests/fixtures/petstore.yaml'),
     ])
-        ->expectsOutputToContain('5 endpoint(s)')
+        ->expectsOutputToContain('4 endpoint(s)')
         ->assertSuccessful();
 });
 

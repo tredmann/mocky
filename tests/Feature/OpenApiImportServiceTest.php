@@ -32,16 +32,17 @@ test('imports petstore yaml with correct collection name and description', funct
         ->and($collection->user_id)->toBe($user->id);
 });
 
-test('imports all endpoints from petstore yaml', function () {
+test('groups path variants into fewer endpoints', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
     $endpoints = $collection->endpoints()->orderBy('slug')->get();
 
-    expect($endpoints)->toHaveCount(5);
+    // pets GET, pets POST, pets DELETE, pets-vaccinations GET — not 5 separate paths
+    expect($endpoints)->toHaveCount(4);
 
     $methods = $endpoints->pluck('method')->sort()->values()->toArray();
-    expect($methods)->toBe(['DELETE', 'GET', 'GET', 'GET', 'POST']);
+    expect($methods)->toBe(['DELETE', 'GET', 'GET', 'POST']);
 });
 
 test('uses operationId as endpoint name when available', function () {
@@ -57,7 +58,7 @@ test('falls back to summary when no operationId', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'pets-petid-vaccinations')->where('method', 'GET')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets-vaccinations')->where('method', 'GET')->first();
 
     expect($endpoint->name)->toBe('List vaccinations for a pet');
 });
@@ -69,10 +70,9 @@ test('generates slug from path without method prefix', function () {
     $slugsWithMethods = $collection->endpoints()->get()->map(fn ($e) => $e->method.' '.$e->slug)->sort()->values()->toArray();
 
     expect($slugsWithMethods)->toBe([
-        'DELETE pets-petid',
+        'DELETE pets',
         'GET pets',
-        'GET pets-petid',
-        'GET pets-petid-vaccinations',
+        'GET pets-vaccinations',
         'POST pets',
     ]);
 });
@@ -96,15 +96,33 @@ test('creates conditional responses for non-default status codes', function () {
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
     $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'GET')->first();
+
+    // One header conditional (500 error) + one path conditional (showPetById)
     $conditionals = $endpoint->conditionalResponses()->get();
+    expect($conditionals)->toHaveCount(2);
 
-    expect($conditionals)->toHaveCount(1);
+    $headerCr = $conditionals->where('condition_source', 'header')->first();
+    expect($headerCr->condition_field)->toBe('X-Mock-Response')
+        ->and($headerCr->condition_value)->toBe('500')
+        ->and($headerCr->status_code)->toBe(500);
+});
 
-    $cr = $conditionals->first();
-    expect($cr->condition_source)->toBe('header')
-        ->and($cr->condition_field)->toBe('X-Mock-Response')
-        ->and($cr->condition_value)->toBe('500')
-        ->and($cr->status_code)->toBe(500);
+test('show pet by id is a path conditional on list pets endpoint', function () {
+    $user = openApiUser();
+
+    $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
+    $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'GET')->first();
+
+    $pathCr = $endpoint->conditionalResponses()->where('condition_source', 'path')->first();
+
+    expect($pathCr)->not->toBeNull()
+        ->and($pathCr->condition_field)->toBe('0')
+        ->and($pathCr->condition_operator)->toBe('not_equals')
+        ->and($pathCr->condition_value)->toBe('')
+        ->and($pathCr->status_code)->toBe(200);
+
+    $body = json_decode($pathCr->response_body, true);
+    expect($body['name'])->toBe('Buddy');
 });
 
 test('handles 201 as success response for create endpoints', function () {
@@ -123,7 +141,8 @@ test('handles 204 no-content response', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'pets-petid')->where('method', 'DELETE')->first();
+    // DELETE /pets/{petId} is promoted to slug "pets" DELETE
+    $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'DELETE')->first();
 
     expect($endpoint->status_code)->toBe(204);
 });
@@ -135,7 +154,7 @@ test('sets correct method for each endpoint', function () {
 
     $getEndpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'GET')->first();
     $postEndpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'POST')->first();
-    $deleteEndpoint = $collection->endpoints()->where('slug', 'pets-petid')->where('method', 'DELETE')->first();
+    $deleteEndpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'DELETE')->first();
 
     expect($getEndpoint->method)->toBe('GET')
         ->and($postEndpoint->method)->toBe('POST')

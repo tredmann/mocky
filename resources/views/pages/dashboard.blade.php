@@ -110,7 +110,7 @@ new #[Title('Dashboard')] class extends Component {
 
             <flux:field>
                 <flux:label>File</flux:label>
-                <flux:input wire:model="importFile" type="file" accept="{{ $importType === 'openapi' ? '.json,.yaml,.yml' : '.json' }}" />
+                <flux:input wire:key="import-file-{{ $importType }}" wire:model="importFile" type="file" accept="{{ $importType === 'openapi' ? '.json,.yaml,.yml' : '.json' }}" />
                 <flux:error name="importFile" />
             </flux:field>
 

@@ -10,7 +10,7 @@ test('imports postman collection via artisan command', function () {
     $this->artisan('postman:import', [
         'file' => base_path('tests/fixtures/postman-users-api.json'),
     ])
-        ->expectsOutputToContain('5 endpoint(s)')
+        ->expectsOutputToContain('4 endpoint(s)')
         ->assertSuccessful();
 });
 

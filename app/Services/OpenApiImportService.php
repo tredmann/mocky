@@ -40,10 +40,10 @@ class OpenApiImportService
             'endpoints' => [],
         ];
 
+        // Collect all (path, method, operation) tuples with their slug info
+        $rawItems = [];
         foreach ($openApi->paths as $path => $pathItem) {
-            $methods = ['get', 'post', 'put', 'patch', 'delete'];
-
-            foreach ($methods as $method) {
+            foreach (['get', 'post', 'put', 'patch', 'delete'] as $method) {
                 /** @var Operation|null $operation */
                 $operation = $pathItem->$method ?? null;
 
@@ -51,20 +51,148 @@ class OpenApiImportService
                     continue;
                 }
 
-                $collectionData['endpoints'][] = $this->buildEndpointData(
-                    $path,
-                    strtoupper($method),
-                    $operation,
-                );
+                [$baseSlug, $pathSegment] = $this->splitPath($path);
+
+                $rawItems[] = [
+                    'path' => $path,
+                    'method' => strtoupper($method),
+                    'operation' => $operation,
+                    'base_slug' => $baseSlug,
+                    'path_segment' => $pathSegment,
+                ];
             }
+        }
+
+        // Group by (base_slug, method) so path-variant operations merge into one endpoint
+        $groups = [];
+        foreach ($rawItems as $rawItem) {
+            $key = $rawItem['base_slug'].'|'.$rawItem['method'];
+            $groups[$key][] = $rawItem;
+        }
+
+        foreach ($groups as $group) {
+            $collectionData['endpoints'][] = $this->buildGroupEndpoint($group);
         }
 
         return $this->collectionImportService->import($user, $collectionData);
     }
 
-    private function buildEndpointData(string $path, string $method, Operation $operation): array
+    /**
+     * Split an OpenAPI path into a base slug and an optional trailing variable segment.
+     *
+     * Returns "__any__" for template params (e.g. {petId}), a concrete string for numeric
+     * segments, or null when there is no trailing variable.
+     *
+     * @return array{string, string|null}
+     */
+    private function splitPath(string $path): array
     {
-        $slug = $this->pathToSlug($path);
+        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+
+        if (empty($segments)) {
+            return ['endpoint', null];
+        }
+
+        $last = end($segments);
+
+        if (count($segments) > 1 && $this->isVariableSegment($last)) {
+            array_pop($segments);
+            $baseSlug = $this->segmentsToSlug($segments);
+            $pathSegment = is_numeric($last) ? $last : '__any__';
+
+            return [$baseSlug, $pathSegment];
+        }
+
+        return [$this->segmentsToSlug($segments), null];
+    }
+
+    private function isVariableSegment(string $segment): bool
+    {
+        // OpenAPI path param: {petId}
+        if (preg_match('/^\{[^{}]+\}$/', $segment)) {
+            return true;
+        }
+
+        // Concrete numeric segment or :param style
+        return is_numeric($segment) || str_starts_with($segment, ':');
+    }
+
+    /** @param list<string> $segments */
+    private function segmentsToSlug(array $segments): string
+    {
+        // Strip any remaining template variables from middle segments
+        $clean = [];
+        foreach ($segments as $segment) {
+            $s = preg_replace('/\{[^}]+\}/', '', $segment) ?? '';
+            $s = trim($s);
+            if ($s !== '') {
+                $clean[] = $s;
+            }
+        }
+
+        $slug = Str::slug(implode('-', $clean));
+
+        return $slug !== '' ? $slug : 'endpoint';
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $group
+     * @return array<string, mixed>
+     */
+    private function buildGroupEndpoint(array $group): array
+    {
+        // Separate the base item (no extra path segment) from path-variant items
+        $baseItem = null;
+        $variantItems = [];
+
+        foreach ($group as $rawItem) {
+            if ($rawItem['path_segment'] === null) {
+                $baseItem ??= $rawItem;
+            } else {
+                $variantItems[] = $rawItem;
+            }
+        }
+
+        // If every item in the group has a path segment, promote the first as the base
+        if ($baseItem === null) {
+            $baseItem = array_shift($variantItems);
+        }
+
+        $endpoint = $this->buildEndpointData(
+            $baseItem['path'],
+            $baseItem['method'],
+            $baseItem['operation'],
+            $baseItem['base_slug'],
+        );
+
+        // Add a path-conditional response for each variant
+        $priority = count($endpoint['conditional_responses']);
+        foreach ($variantItems as $rawItem) {
+            $variantData = $this->buildEndpointData(
+                $rawItem['path'],
+                $rawItem['method'],
+                $rawItem['operation'],
+                $rawItem['base_slug'],
+            );
+            $isTemplate = $rawItem['path_segment'] === '__any__';
+
+            $endpoint['conditional_responses'][] = [
+                'condition_source' => 'path',
+                'condition_field' => '0',
+                'condition_operator' => $isTemplate ? 'not_equals' : 'equals',
+                'condition_value' => $isTemplate ? '' : $rawItem['path_segment'],
+                'status_code' => $variantData['status_code'],
+                'content_type' => $variantData['content_type'],
+                'response_body' => $variantData['response_body'],
+                'priority' => $priority++,
+            ];
+        }
+
+        return $endpoint;
+    }
+
+    private function buildEndpointData(string $path, string $method, Operation $operation, string $slug): array
+    {
         $name = $operation->operationId
             ?? $operation->summary
             ?? "{$method} {$path}";
@@ -194,19 +322,6 @@ class OpenApiImportService
             'boolean' => false,
             default => null,
         };
-    }
-
-    private function pathToSlug(string $path): string
-    {
-        $cleaned = str_replace(['{', '}'], '', $path);
-        $cleaned = trim($cleaned, '/');
-        $slug = Str::slug(str_replace('/', '-', $cleaned));
-
-        if (empty($slug)) {
-            $slug = 'root';
-        }
-
-        return $slug;
     }
 
     private function isSuccessCode(string $code): bool

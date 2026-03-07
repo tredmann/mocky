@@ -67,11 +67,26 @@ Each `ConditionalResponse` has one condition: a **source** (`body`, `query`, `he
 - `EndpointExportService` — serialises an endpoint + its conditional responses to a JSON streamed download
 - `EndpointImportService` — creates an endpoint + conditional responses from the exported JSON array; regenerates the slug if it already exists
 - `CurlCommandBuilder` — builds a representative curl command for an endpoint's default response or a conditional response. For `not_equals` conditions the example value is `"other"` (not the condition value) so the command actually triggers the condition.
+- `OpenApiImportService` — imports an OpenAPI 3.x spec (JSON or YAML); groups operations sharing the same base path + method into one endpoint, turning path-parameter variants (e.g. `GET /pets/{petId}`) into `path` conditional responses on the base endpoint.
+- `PostmanImportService` — imports a Postman Collection v2.1 JSON; groups requests with the same base path + method into one endpoint; numeric trailing path segments (e.g. `/users/1`) become `path` conditional responses; `:param`-style segments behave like OpenAPI template params.
+
+### Import grouping logic
+
+Both OpenAPI and Postman importers share the same path-splitting strategy:
+
+1. Strip template variables (`{id}`, `{{base_url}}`, `:param`) from the path.
+2. If the trailing segment looks like a variable (template param or numeric), pop it; the remaining path becomes the `base_slug`.
+3. Operations/requests are grouped by `(base_slug, method)`.
+4. Within a group, the item with no path variable is the default endpoint; items with a path variable become `path` conditional responses:
+   - **Concrete value** (e.g. `1`) → `path[0] equals "1"`
+   - **Template param** (e.g. `{id}`, `:id`) → `path[0] not_equals ""`
 
 ### Artisan commands
 
 - `endpoint:export {slug} {--output=}` — exports an endpoint to a JSON file (defaults to `{slug}.json`)
 - `endpoint:import {file} {--user=}` — imports from a JSON file; `--user` accepts email or UUID; defaults to the first user
+- `openapi:import {file} {--user=}` — imports an OpenAPI spec (`.json`, `.yaml`, `.yml`); max 5 MB
+- `postman:import {file} {--user=}` — imports a Postman Collection JSON; max 5 MB
 
 ### UI structure
 

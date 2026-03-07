@@ -13,6 +13,8 @@ A configurable mock REST API server. Define endpoints through a web UI, then poi
 - **Conditional responses** — return different status codes and bodies based on request content (query params, headers, JSON body fields, or URL path segments)
 - **Request logs** — every incoming request is logged with IP, headers, body, and which response was returned
 - **Export / import** — download and restore entire collections (with all endpoints) or individual endpoints as JSON
+- **OpenAPI import** — import an OpenAPI 3.x spec (`.json`, `.yaml`, `.yml`) as a collection; path-parameter variants are automatically grouped as `path` conditional responses
+- **Postman import** — import a Postman Collection v2.1 JSON; requests sharing the same base path and method are grouped into one endpoint with path-based conditionals
 - **cURL helper** — generates a ready-to-run curl command for each response, pre-filled with the condition values
 - Docker-ready with FrankenPHP
 
@@ -53,7 +55,10 @@ You can export an entire collection — including all its endpoints and their co
 **From the UI:**
 
 - **Export** — click the download icon on the collection detail page to download the JSON file
-- **Import** — click the upload icon on the dashboard to import a collection from a previously exported file
+- **Import** — click the upload icon on the dashboard and choose a format:
+  - **Native JSON** — a previously exported Mocky collection file
+  - **OpenAPI (JSON / YAML)** — an OpenAPI 3.x spec file (`.json`, `.yaml`, `.yml`)
+  - **Postman Collection** — a Postman Collection v2.1 JSON file
 
 **From the CLI:**
 
@@ -62,9 +67,17 @@ You can export an entire collection — including all its endpoints and their co
 php artisan collection:export {collection-slug}
 php artisan collection:export {collection-slug} --output=my-collection.json
 
-# Import
+# Import (native)
 php artisan collection:import {file}
 php artisan collection:import {file} --user=admin@admin.com
+
+# Import from OpenAPI spec
+php artisan openapi:import {file}
+php artisan openapi:import {file} --user=admin@admin.com
+
+# Import from Postman Collection
+php artisan postman:import {file}
+php artisan postman:import {file} --user=admin@admin.com
 ```
 
 The exported format looks like this:
@@ -86,6 +99,18 @@ The exported format looks like this:
   ]
 }
 ```
+
+### OpenAPI / Postman import grouping
+
+Both importers group requests by **base path + HTTP method**, so a typical REST resource is turned into a small number of endpoints rather than one per operation:
+
+| Operations | Result |
+|---|---|
+| `GET /users` + `GET /users/{id}` | One `GET users` endpoint — list is the default, single-item is a `path[0] not_equals ""` conditional |
+| `POST /users` | One `POST users` endpoint |
+| `DELETE /users/{id}` | One `DELETE users` endpoint (the `{id}` variant is promoted to the default) |
+
+Path segments are treated as variables when they are: an OpenAPI template param (`{id}`), a Postman variable (`:id` or `{{id}}`), or a bare numeric value (`1`). Concrete numeric segments (e.g. `/users/1`) produce an `equals "1"` condition; template params produce a `not_equals ""` condition (matches any value).
 
 ## How it works
 
@@ -123,9 +148,17 @@ A condition is made up of four parts:
 php artisan collection:export {collection-slug}
 php artisan collection:export {collection-slug} --output=my-collection.json
 
-# Import a collection from a JSON file
+# Import a native Mocky collection
 php artisan collection:import {file}
 php artisan collection:import {file} --user=admin@admin.com
+
+# Import from an OpenAPI spec (.json, .yaml, .yml)
+php artisan openapi:import {file}
+php artisan openapi:import {file} --user=admin@admin.com
+
+# Import from a Postman Collection JSON
+php artisan postman:import {file}
+php artisan postman:import {file} --user=admin@admin.com
 ```
 
 ### Endpoints

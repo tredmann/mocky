@@ -32,12 +32,13 @@ test('imports postman collection with correct name and description', function ()
         ->and($collection->user_id)->toBe($user->id);
 });
 
-test('imports all requests including nested folders', function () {
+test('groups path variants into fewer endpoints', function () {
     $user = postmanUser();
 
     $collection = postmanService()->importFromFile($user, postmanFixturePath('postman-users-api.json'));
 
-    expect($collection->endpoints()->count())->toBe(5);
+    // Login, api-users GET, api-users POST, api-users DELETE — not 5 separate requests
+    expect($collection->endpoints()->count())->toBe(4);
 });
 
 test('flattens folder structure into endpoints', function () {
@@ -56,7 +57,8 @@ test('uses request name as endpoint name', function () {
     $collection = postmanService()->importFromFile($user, postmanFixturePath('postman-users-api.json'));
     $names = $collection->endpoints()->pluck('name')->sort()->values()->toArray();
 
-    expect($names)->toBe(['Create User', 'Delete User', 'Get User', 'List Users', 'Login']);
+    // Get User is merged as a conditional on List Users; no separate endpoint
+    expect($names)->toBe(['Create User', 'Delete User', 'List Users', 'Login']);
 });
 
 test('sets correct HTTP method from postman request', function () {
@@ -113,13 +115,17 @@ test('extracts content type from response headers', function () {
     expect($listUsers->content_type)->toBe('application/json');
 });
 
-test('falls back to postman preview language for content type', function () {
+test('falls back to postman preview language for content type on path conditional', function () {
     $user = postmanUser();
 
     $collection = postmanService()->importFromFile($user, postmanFixturePath('postman-users-api.json'));
-    $getUser = $collection->endpoints()->where('name', 'Get User')->first();
+    $listUsers = $collection->endpoints()->where('name', 'List Users')->first();
 
-    expect($getUser->content_type)->toBe('application/json');
+    // Get User (which uses _postman_previewlanguage) is merged as a path conditional
+    $pathConditional = $listUsers->conditionalResponses()->where('condition_source', 'path')->first();
+
+    expect($pathConditional)->not->toBeNull()
+        ->and($pathConditional->content_type)->toBe('application/json');
 });
 
 test('uses request body as fallback when no saved responses', function () {
@@ -163,13 +169,41 @@ test('all imported endpoints are active', function () {
     expect($inactiveCount)->toBe(0);
 });
 
-test('generates slug from request name', function () {
+test('generates slug from url path', function () {
     $user = postmanUser();
 
     $collection = postmanService()->importFromFile($user, postmanFixturePath('postman-users-api.json'));
     $listUsers = $collection->endpoints()->where('name', 'List Users')->first();
 
-    expect($listUsers->slug)->toBe('list-users');
+    expect($listUsers->slug)->toBe('api-users');
+});
+
+test('get user is a path conditional on the list users endpoint', function () {
+    $user = postmanUser();
+
+    $collection = postmanService()->importFromFile($user, postmanFixturePath('postman-users-api.json'));
+    $listUsers = $collection->endpoints()->where('name', 'List Users')->first();
+    $conditional = $listUsers->conditionalResponses()->where('condition_source', 'path')->first();
+
+    expect($conditional)->not->toBeNull()
+        ->and($conditional->condition_field)->toBe('0')
+        ->and($conditional->condition_operator)->toBe('equals')
+        ->and($conditional->condition_value)->toBe('1')
+        ->and($conditional->status_code)->toBe(200);
+
+    $body = json_decode($conditional->response_body, true);
+    expect($body['name'])->toBe('Alice');
+});
+
+test('path conditional has correct priority', function () {
+    $user = postmanUser();
+
+    $collection = postmanService()->importFromFile($user, postmanFixturePath('postman-users-api.json'));
+    $listUsers = $collection->endpoints()->where('name', 'List Users')->first();
+    $conditionals = $listUsers->conditionalResponses()->orderBy('priority')->get();
+
+    expect($conditionals)->toHaveCount(1);
+    expect($conditionals->first()->priority)->toBe(0);
 });
 
 // --- Minimal / edge cases ---
@@ -193,14 +227,3 @@ test('throws exception for invalid postman file', function () {
         unlink($tmpFile);
     }
 })->throws(InvalidArgumentException::class, 'Invalid Postman collection file');
-
-test('handles multiple conditional responses with sequential priorities', function () {
-    $user = postmanUser();
-
-    $collection = postmanService()->importFromFile($user, postmanFixturePath('postman-users-api.json'));
-    $getUser = $collection->endpoints()->where('name', 'Get User')->first();
-    $conditionals = $getUser->conditionalResponses()->orderBy('priority')->get();
-
-    expect($conditionals)->toHaveCount(1);
-    expect($conditionals->first()->priority)->toBe(0);
-});
