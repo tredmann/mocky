@@ -17,20 +17,27 @@ class MockController extends Controller
             return response('Not Found', 404)->header('Content-Type', 'application/json');
         }
 
-        $endpoint = $collection->endpoints()->where('slug', $endpointSlug)->first();
+        $endpoint = $collection->endpoints()
+            ->where('slug', $endpointSlug)
+            ->where('method', $request->method())
+            ->first();
 
         if (! $endpoint) {
-            return response('Not Found', 404)->header('Content-Type', 'application/json');
+            $allowedMethods = $collection->endpoints()
+                ->where('slug', $endpointSlug)
+                ->pluck('method');
+
+            if ($allowedMethods->isEmpty()) {
+                return response('Not Found', 404)->header('Content-Type', 'application/json');
+            }
+
+            return response('Method Not Allowed', 405)
+                ->header('Allow', $allowedMethods->join(', '))
+                ->header('Content-Type', 'application/json');
         }
 
         if (! $endpoint->is_active) {
             return response('Not Found', 404)->header('Content-Type', 'application/json');
-        }
-
-        if ($request->method() !== $endpoint->method) {
-            return response('Method Not Allowed', 405)
-                ->header('Allow', $endpoint->method)
-                ->header('Content-Type', 'application/json');
         }
 
         $endpoint->load('conditionalResponses');

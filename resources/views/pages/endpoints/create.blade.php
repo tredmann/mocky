@@ -2,6 +2,7 @@
 
 use App\Models\EndpointCollection;
 use App\Rules\ValidResponseSyntax;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -25,7 +26,7 @@ new #[Title('New Endpoint')] class extends Component {
     {
         $validated = $this->validate([
             'name'          => ['required', 'string', 'max:255'],
-            'slug'          => ['required', 'string', 'max:255', 'regex:/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/', 'unique:endpoints,slug'],
+            'slug'          => ['required', 'string', 'max:255', 'regex:/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/', Rule::unique('endpoints', 'slug')->where(fn ($query) => $query->where('collection_id', $this->collection->id)->where('method', $this->method))],
             'description'   => ['nullable', 'string', 'max:1000'],
             'method'        => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
             'status_code'   => ['required', 'integer', 'min:100', 'max:599'],

@@ -48,7 +48,7 @@ test('uses operationId as endpoint name when available', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'get-pets')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'GET')->first();
 
     expect($endpoint->name)->toBe('listPets');
 });
@@ -57,23 +57,23 @@ test('falls back to summary when no operationId', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'get-pets-petid-vaccinations')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets-petid-vaccinations')->where('method', 'GET')->first();
 
     expect($endpoint->name)->toBe('List vaccinations for a pet');
 });
 
-test('generates slug from path and method', function () {
+test('generates slug from path without method prefix', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $slugs = $collection->endpoints()->pluck('slug')->sort()->values()->toArray();
+    $slugsWithMethods = $collection->endpoints()->get()->map(fn ($e) => $e->method.' '.$e->slug)->sort()->values()->toArray();
 
-    expect($slugs)->toBe([
-        'delete-pets-petid',
-        'get-pets',
-        'get-pets-petid',
-        'get-pets-petid-vaccinations',
-        'post-pets',
+    expect($slugsWithMethods)->toBe([
+        'DELETE pets-petid',
+        'GET pets',
+        'GET pets-petid',
+        'GET pets-petid-vaccinations',
+        'POST pets',
     ]);
 });
 
@@ -81,7 +81,7 @@ test('uses first success response as default response', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'get-pets')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'GET')->first();
 
     expect($endpoint->status_code)->toBe(200)
         ->and($endpoint->content_type)->toBe('application/json');
@@ -95,7 +95,7 @@ test('creates conditional responses for non-default status codes', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'get-pets')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'GET')->first();
     $conditionals = $endpoint->conditionalResponses()->get();
 
     expect($conditionals)->toHaveCount(1);
@@ -111,7 +111,7 @@ test('handles 201 as success response for create endpoints', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'post-pets')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'POST')->first();
 
     expect($endpoint->status_code)->toBe(201);
 
@@ -123,7 +123,7 @@ test('handles 204 no-content response', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'delete-pets-petid')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets-petid')->where('method', 'DELETE')->first();
 
     expect($endpoint->status_code)->toBe(204);
 });
@@ -133,9 +133,9 @@ test('sets correct method for each endpoint', function () {
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
 
-    $getEndpoint = $collection->endpoints()->where('slug', 'get-pets')->first();
-    $postEndpoint = $collection->endpoints()->where('slug', 'post-pets')->first();
-    $deleteEndpoint = $collection->endpoints()->where('slug', 'delete-pets-petid')->first();
+    $getEndpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'GET')->first();
+    $postEndpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'POST')->first();
+    $deleteEndpoint = $collection->endpoints()->where('slug', 'pets-petid')->where('method', 'DELETE')->first();
 
     expect($getEndpoint->method)->toBe('GET')
         ->and($postEndpoint->method)->toBe('POST')
@@ -168,7 +168,7 @@ test('generates example from schema when no example provided', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('schema-only.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'get-users')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'users')->where('method', 'GET')->first();
 
     $body = json_decode($endpoint->response_body, true);
     expect($body)->toBeArray()
@@ -182,7 +182,7 @@ test('uses first enum value for enum properties', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('schema-only.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'post-users')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'users')->where('method', 'POST')->first();
 
     $body = json_decode($endpoint->response_body, true);
     expect($body['role'])->toBe('admin');
@@ -209,7 +209,7 @@ test('conditional response priorities are sequential', function () {
     $user = openApiUser();
 
     $collection = openApiService()->importFromFile($user, fixturePath('petstore.yaml'));
-    $endpoint = $collection->endpoints()->where('slug', 'post-pets')->first();
+    $endpoint = $collection->endpoints()->where('slug', 'pets')->where('method', 'POST')->first();
     $conditionals = $endpoint->conditionalResponses()->orderBy('priority')->get();
 
     expect($conditionals)->toHaveCount(1);

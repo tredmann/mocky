@@ -13,13 +13,15 @@ class EndpointImportService
     {
         $slug = $data['slug'] ?? Str::slug($data['name']);
 
-        if ($collection->endpoints()->where('slug', $slug)->exists()) {
+        $method = $data['method'];
+
+        if ($collection->endpoints()->where('slug', $slug)->where('method', $method)->exists()) {
             $base = $slug;
             $i = 1;
             do {
                 $slug = "{$base}-{$i}";
                 $i++;
-            } while ($collection->endpoints()->where('slug', $slug)->exists());
+            } while ($collection->endpoints()->where('slug', $slug)->where('method', $method)->exists());
         }
 
         /** @var Endpoint $endpoint */

@@ -164,8 +164,6 @@ class PostmanImportService
             if (empty($slug)) {
                 $slug = 'endpoint';
             }
-
-            $slug = strtolower($method).'-'.$slug;
         }
 
         return $slug;

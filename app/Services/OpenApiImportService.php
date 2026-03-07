@@ -64,7 +64,7 @@ class OpenApiImportService
 
     private function buildEndpointData(string $path, string $method, Operation $operation): array
     {
-        $slug = $this->pathToSlug($path, $method);
+        $slug = $this->pathToSlug($path);
         $name = $operation->operationId
             ?? $operation->summary
             ?? "{$method} {$path}";
@@ -196,7 +196,7 @@ class OpenApiImportService
         };
     }
 
-    private function pathToSlug(string $path, string $method): string
+    private function pathToSlug(string $path): string
     {
         $cleaned = str_replace(['{', '}'], '', $path);
         $cleaned = trim($cleaned, '/');
@@ -206,7 +206,7 @@ class OpenApiImportService
             $slug = 'root';
         }
 
-        return strtolower($method).'-'.$slug;
+        return $slug;
     }
 
     private function isSuccessCode(string $code): bool
