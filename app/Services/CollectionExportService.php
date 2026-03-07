@@ -14,6 +14,7 @@ class CollectionExportService
     {
         return [
             'name' => $collection->name,
+            'slug' => $collection->slug,
             'description' => $collection->description,
             'endpoints' => $collection->endpoints()
                 ->get()

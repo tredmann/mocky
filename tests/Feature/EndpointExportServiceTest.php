@@ -67,7 +67,7 @@ test('exports endpoint fields', function () {
         ->and($data['content_type'])->toBe('application/json')
         ->and($data['response_body'])->toBe('{"message":"ok"}')
         ->and($data['is_active'])->toBeTrue()
-        ->and($data)->toHaveKey('collection_slug');
+        ->and($data)->not->toHaveKey('collection_slug');
 });
 
 test('exports with empty conditional responses when none exist', function () {

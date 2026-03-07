@@ -14,7 +14,6 @@ class EndpointExportService
             'name' => $endpoint->name,
             'description' => $endpoint->description,
             'slug' => $endpoint->slug,
-            'collection_slug' => $endpoint->collection?->slug,
             'method' => $endpoint->method,
             'status_code' => $endpoint->status_code,
             'content_type' => $endpoint->content_type,

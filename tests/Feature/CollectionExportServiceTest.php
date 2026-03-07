@@ -57,6 +57,7 @@ test('exports collection fields', function () {
     $data = exportedCollectionJson($collection);
 
     expect($data['name'])->toBe('Test Collection')
+        ->and($data['slug'])->toBe((string) $collection->slug)
         ->and($data['description'])->toBe('A test collection')
         ->and($data['endpoints'])->toBeArray();
 });

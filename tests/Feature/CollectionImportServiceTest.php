@@ -136,3 +136,21 @@ test('generates a unique slug for the imported collection', function () {
 
     expect($first->slug)->not->toBe($second->slug);
 });
+
+test('uses slug from data when it does not already exist', function () {
+    $user = collectionImportUser();
+
+    $collection = collectionImportService()->import($user, collectionBaseData(['slug' => 'my-custom-slug']));
+
+    expect($collection->slug)->toBe('my-custom-slug');
+});
+
+test('generates a new slug when the provided slug is already taken', function () {
+    $user = collectionImportUser();
+
+    $first = collectionImportService()->import($user, collectionBaseData(['slug' => 'taken-slug']));
+    $second = collectionImportService()->import($user, collectionBaseData(['slug' => 'taken-slug']));
+
+    expect($second->slug)->not->toBe('taken-slug')
+        ->and($second->slug)->not->toBe($first->slug);
+});
