@@ -12,6 +12,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
     // Endpoint fields
     public string $name = '';
+    public string $slug = '';
     public string $description = '';
     public string $method = 'GET';
 
@@ -40,6 +41,7 @@ new #[Title('Edit Endpoint')] class extends Component {
         $this->cr_condition_source = $this->endpoint->method === 'GET' ? 'query' : 'body';
 
         $this->name          = $this->endpoint->name;
+        $this->slug          = $this->endpoint->slug;
         $this->description   = $this->endpoint->description ?? '';
         $this->method        = $this->endpoint->method;
         $this->status_code   = $this->endpoint->status_code;
@@ -62,6 +64,7 @@ new #[Title('Edit Endpoint')] class extends Component {
     {
         $validated = $this->validate([
             'name'          => ['required', 'string', 'max:255'],
+            'slug'          => ['required', 'string', 'max:255', 'regex:/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/', 'unique:endpoints,slug,' . $this->endpoint->id],
             'description'   => ['nullable', 'string', 'max:1000'],
             'method'        => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
             'status_code'   => ['required', 'integer', 'min:100', 'max:599'],
@@ -161,6 +164,13 @@ new #[Title('Edit Endpoint')] class extends Component {
                 <flux:label>Name</flux:label>
                 <flux:input wire:model="name" />
                 <flux:error name="name" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Slug</flux:label>
+                <flux:input wire:model="slug" />
+                <flux:description>The URL path for this endpoint: /mock/<strong>your-slug</strong></flux:description>
+                <flux:error name="slug" />
             </flux:field>
 
             <flux:field>

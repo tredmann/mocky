@@ -9,6 +9,7 @@ new #[Title('New Endpoint')] class extends Component {
     public EndpointCollection $collection;
 
     public string $name = '';
+    public string $slug = '';
     public string $description = '';
     public string $method = 'GET';
     public int $status_code = 200;
@@ -24,6 +25,7 @@ new #[Title('New Endpoint')] class extends Component {
     {
         $validated = $this->validate([
             'name'          => ['required', 'string', 'max:255'],
+            'slug'          => ['required', 'string', 'max:255', 'regex:/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/', 'unique:endpoints,slug'],
             'description'   => ['nullable', 'string', 'max:1000'],
             'method'        => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
             'status_code'   => ['required', 'integer', 'min:100', 'max:599'],
@@ -62,6 +64,13 @@ new #[Title('New Endpoint')] class extends Component {
                 <flux:label>Name</flux:label>
                 <flux:input wire:model="name" placeholder="e.g. Get user by ID" autofocus />
                 <flux:error name="name" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>Slug</flux:label>
+                <flux:input wire:model="slug" placeholder="e.g. get-user" />
+                <flux:description>The URL path for this endpoint: /mock/<strong>your-slug</strong></flux:description>
+                <flux:error name="slug" />
             </flux:field>
 
             <flux:field>

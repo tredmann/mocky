@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 class Endpoint extends Model
 {
@@ -34,15 +33,6 @@ class Endpoint extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
-    }
-
-    protected static function booted(): void
-    {
-        static::creating(function (Endpoint $endpoint) {
-            if (empty($endpoint->slug)) {
-                $endpoint->slug = Str::uuid();
-            }
-        });
     }
 
     /** @return BelongsTo<User, $this> */

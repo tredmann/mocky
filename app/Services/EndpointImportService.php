@@ -11,10 +11,15 @@ class EndpointImportService
 {
     public function import(User $user, array $data, EndpointCollection $collection): Endpoint
     {
-        $slug = $data['slug'] ?? null;
+        $slug = $data['slug'] ?? Str::slug($data['name']);
 
-        if (! $slug || $collection->endpoints()->where('slug', $slug)->exists()) {
-            $slug = Str::uuid();
+        if ($collection->endpoints()->where('slug', $slug)->exists()) {
+            $base = $slug;
+            $i = 1;
+            do {
+                $slug = "{$base}-{$i}";
+                $i++;
+            } while ($collection->endpoints()->where('slug', $slug)->exists());
         }
 
         /** @var Endpoint $endpoint */
