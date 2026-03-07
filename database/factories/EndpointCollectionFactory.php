@@ -13,7 +13,7 @@ class EndpointCollectionFactory extends Factory
         return [
             'user_id' => User::factory(),
             'name' => $this->faker->words(2, true),
-            'slug' => Str::slug($this->faker->unique()->words(2, true)),
+            'slug' => Str::uuid(),
             'description' => $this->faker->optional()->sentence(),
         ];
     }

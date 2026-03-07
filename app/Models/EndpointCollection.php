@@ -24,13 +24,7 @@ class EndpointCollection extends Model
     {
         static::creating(function (EndpointCollection $collection) {
             if (empty($collection->slug)) {
-                $base = Str::slug($collection->name) ?: Str::uuid();
-                $slug = $base;
-                $i = 1;
-                while (static::where('slug', $slug)->exists()) {
-                    $slug = $base.'-'.$i++;
-                }
-                $collection->slug = $slug;
+                $collection->slug = Str::uuid();
             }
         });
     }

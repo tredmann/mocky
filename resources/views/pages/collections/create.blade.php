@@ -32,7 +32,6 @@ new #[Title('New Collection')] class extends Component {
                 <flux:label>Name</flux:label>
                 <flux:input wire:model="name" placeholder="e.g. Users API" autofocus />
                 <flux:error name="name" />
-                <flux:description>A slug will be auto-generated from the name.</flux:description>
             </flux:field>
 
             <flux:field>
