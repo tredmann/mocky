@@ -198,7 +198,6 @@ new #[Title('Collection')] class extends Component {
                                 <flux:switch
                                     wire:click="toggleActive('{{ $endpoint->id }}')"
                                     :checked="$endpoint->is_active"
-                                    class="[--color-accent:var(--color-green-500)]"
                                 />
                             </td>
                         </tr>

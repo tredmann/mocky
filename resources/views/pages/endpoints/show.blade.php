@@ -77,7 +77,6 @@ new #[Title('Endpoint')] class extends Component {
             <flux:switch
                 wire:click="toggleActive"
                 :checked="$endpoint->is_active"
-                style="{{ $endpoint->is_active ? '--color-accent: var(--color-green-500)' : '' }}"
             />
         </div>
         <div class="flex items-center gap-2">
