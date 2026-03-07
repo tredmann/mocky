@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\EndpointCollection;
+use App\Services\CollectionExportService;
 use App\Services\EndpointImportService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -39,6 +40,11 @@ new #[Title('Collection')] class extends Component {
         $endpoint = $this->collection->endpoints()->where('id', $id)->firstOrFail();
         $endpoint->update(['is_active' => ! $endpoint->is_active]);
         unset($this->endpoints);
+    }
+
+    public function export(CollectionExportService $service): mixed
+    {
+        return $service->export($this->collection);
     }
 
     public function import(EndpointImportService $service): void
@@ -87,6 +93,7 @@ new #[Title('Collection')] class extends Component {
             <flux:heading size="xl">{{ $collection->name }}</flux:heading>
         </div>
         <div class="flex items-center gap-2">
+            <flux:button wire:click="export" variant="ghost" icon="arrow-down-tray" />
             <flux:button wire:click="$set('showImport', true)" variant="ghost" icon="arrow-up-tray" />
             <flux:button wire:click="delete" wire:confirm="Delete this collection and all its endpoints?" variant="ghost" icon="trash" />
             <flux:button href="{{ route('collections.edit', $collection) }}" variant="ghost" icon="pencil" />

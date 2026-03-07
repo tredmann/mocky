@@ -7,11 +7,12 @@ A configurable mock REST API server. Define endpoints through a web UI, then poi
 
 ## Features
 
+- **Collections** — group endpoints under a shared URL prefix
 - Create endpoints for any HTTP method (GET, POST, PUT, PATCH, DELETE)
 - Unique slug per endpoint — share the URL with anyone
 - **Conditional responses** — return different status codes and bodies based on request content (query params, headers, JSON body fields, or URL path segments)
 - **Request logs** — every incoming request is logged with IP, headers, body, and which response was returned
-- **Export / import** endpoints as JSON files
+- **Export / import** — download and restore entire collections (with all endpoints) or individual endpoints as JSON
 - **cURL helper** — generates a ready-to-run curl command for each response, pre-filled with the condition values
 - Docker-ready with FrankenPHP
 
@@ -40,6 +41,51 @@ docker compose up
 The app is available at `http://localhost:8090`.
 
 The container runs migrations and caches config/routes/views automatically on startup. The SQLite database and storage are persisted in named volumes.
+
+## Collections
+
+Endpoints are organised into **collections**. Each collection gets its own UUID-based URL prefix (`/mock/{collection-slug}/…`), so you can group related endpoints together.
+
+### Collection export / import
+
+You can export an entire collection — including all its endpoints and their conditional responses — as a single JSON file. This is useful for backing up your setup, migrating to a new instance, or sharing with teammates.
+
+**From the UI:**
+
+- **Export** — click the download icon on the collection detail page to download the JSON file
+- **Import** — click the upload icon on the dashboard to import a collection from a previously exported file
+
+**From the CLI:**
+
+```bash
+# Export
+php artisan collection:export {collection-slug}
+php artisan collection:export {collection-slug} --output=my-collection.json
+
+# Import
+php artisan collection:import {file}
+php artisan collection:import {file} --user=admin@admin.com
+```
+
+The exported format looks like this:
+
+```json
+{
+  "name": "My API",
+  "description": "...",
+  "endpoints": [
+    {
+      "name": "Get user",
+      "slug": "get-user",
+      "method": "GET",
+      "status_code": 200,
+      "content_type": "application/json",
+      "response_body": "{\"id\": 1}",
+      "conditional_responses": [...]
+    }
+  ]
+}
+```
 
 ## How it works
 
@@ -70,26 +116,31 @@ A condition is made up of four parts:
 
 ## Artisan commands
 
-### Export an endpoint
+### Collections
 
 ```bash
-php artisan endpoint:export {slug}
-php artisan endpoint:export {slug} --output=my-endpoint.json
+# Export a collection with all endpoints
+php artisan collection:export {collection-slug}
+php artisan collection:export {collection-slug} --output=my-collection.json
+
+# Import a collection from a JSON file
+php artisan collection:import {file}
+php artisan collection:import {file} --user=admin@admin.com
 ```
 
-Exports the endpoint definition (including all conditional responses) to a JSON file. Defaults to `{slug}.json` in the current directory.
-
-### Import an endpoint
+### Endpoints
 
 ```bash
+# Export a single endpoint
+php artisan endpoint:export {collection-slug} {endpoint-slug}
+php artisan endpoint:export {collection-slug} {endpoint-slug} --output=my-endpoint.json
+
+# Import a single endpoint into a collection
 php artisan endpoint:import {file}
-php artisan endpoint:import {file} --user=admin@admin.com
-php artisan endpoint:import {file} --user={uuid}
+php artisan endpoint:import {file} --user=admin@admin.com --collection={collection-slug}
 ```
 
-Imports an endpoint from a previously exported JSON file and assigns it to a user. The `--user` option accepts an email address or a UUID. If omitted, the first user in the database is used.
-
-If the slug from the file already exists, a new UUID slug is generated automatically.
+The `--user` option accepts an email or UUID. If omitted, the first user in the database is used. Duplicate slugs are automatically resolved by appending a numeric suffix.
 
 ## Running tests
 

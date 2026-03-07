@@ -59,13 +59,20 @@
         "lint:check": [
             "pint --parallel --test"
         ],
+        "analyse": [
+            "phpstan analyse --memory-limit=512M"
+        ],
+        "check-style": [
+            "@lint:check",
+            "@analyse"
+        ],
         "ci:check": [
             "Composer\\Config::disableProcessTimeout",
             "@test"
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@lint:check",
+            "@check-style",
             "@php artisan test"
         ],
         "post-autoload-dump": [

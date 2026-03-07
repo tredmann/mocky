@@ -1,24 +1,89 @@
 <?php
 
+use App\Services\CollectionImportService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Title('Dashboard')] class extends Component {
+    use WithFileUploads;
+
+    public $importFile = null;
+    public bool $showImport = false;
+    public ?string $importError = null;
+
     #[Computed]
     public function collections()
     {
         return auth()->user()->endpointCollections()->withCount('endpoints')->latest()->get();
+    }
+
+    public function importCollection(CollectionImportService $service): void
+    {
+        $this->validate(['importFile' => ['required', 'file', 'mimes:json', 'max:5120']]);
+
+        $data = json_decode(file_get_contents($this->importFile->getRealPath()), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($data)) {
+            $this->importError = 'Invalid JSON file.';
+
+            return;
+        }
+
+        if (empty($data['name'])) {
+            $this->importError = 'Missing required field: name';
+
+            return;
+        }
+
+        $service->import(auth()->user(), $data);
+
+        $this->showImport = false;
+        $this->importFile = null;
+        $this->importError = null;
+        unset($this->collections);
+    }
+
+    public function cancelImport(): void
+    {
+        $this->showImport = false;
+        $this->importFile = null;
+        $this->importError = null;
     }
 }; ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-6">
     <div class="flex items-center justify-between">
         <flux:heading size="xl">Collections</flux:heading>
-        <flux:button href="{{ route('collections.create') }}" variant="primary" icon="plus">
-            New Collection
-        </flux:button>
+        <div class="flex items-center gap-2">
+            <flux:button wire:click="$set('showImport', true)" variant="ghost" icon="arrow-up-tray" />
+            <flux:button href="{{ route('collections.create') }}" variant="primary" icon="plus">
+                New Collection
+            </flux:button>
+        </div>
     </div>
+
+    @if ($showImport)
+        <flux:card class="space-y-4">
+            <flux:heading size="lg">Import Collection</flux:heading>
+
+            <flux:field>
+                <flux:label>JSON File</flux:label>
+                <flux:input wire:model="importFile" type="file" accept=".json" />
+                <flux:error name="importFile" />
+            </flux:field>
+
+            @if ($importError)
+                <p class="text-sm text-red-500">{{ $importError }}</p>
+            @endif
+
+            <div class="flex justify-end gap-3">
+                <flux:button wire:click="cancelImport" variant="ghost">Cancel</flux:button>
+                <flux:button wire:click="importCollection" variant="primary" icon="arrow-up-tray">Import</flux:button>
+            </div>
+        </flux:card>
+    @endif
 
     @if ($this->collections->isEmpty())
         <div class="flex flex-1 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700">
