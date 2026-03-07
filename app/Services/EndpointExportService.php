@@ -7,9 +7,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EndpointExportService
 {
-    public function export(Endpoint $endpoint): StreamedResponse
+    /** @return array<string, mixed> */
+    public function toArray(Endpoint $endpoint): array
     {
-        $data = [
+        return [
             'name' => $endpoint->name,
             'slug' => $endpoint->slug,
             'method' => $endpoint->method,
@@ -31,7 +32,11 @@ class EndpointExportService
                 ])
                 ->all(),
         ];
+    }
 
+    public function export(Endpoint $endpoint): StreamedResponse
+    {
+        $data = $this->toArray($endpoint);
         $filename = str($endpoint->name)->slug()->append('.json')->toString();
 
         return response()->streamDownload(

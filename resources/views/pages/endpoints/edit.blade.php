@@ -43,6 +43,11 @@ new #[Title('Edit Endpoint')] class extends Component {
         $this->response_body = $this->endpoint->response_body ?? '';
     }
 
+    public function updatedMethod(string $value): void
+    {
+        $this->cr_condition_source = $value === 'GET' ? 'query' : 'body';
+    }
+
     #[Computed]
     public function conditionalResponses()
     {
@@ -155,7 +160,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
             <flux:field>
                 <flux:label>Method</flux:label>
-                <flux:select wire:model="method">
+                <flux:select wire:model.live="method">
                     <flux:select.option value="GET">GET</flux:select.option>
                     <flux:select.option value="POST">POST</flux:select.option>
                     <flux:select.option value="PUT">PUT</flux:select.option>

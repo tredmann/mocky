@@ -42,7 +42,7 @@ class CurlCommandBuilder
     private function exampleValue(ConditionalResponse $cr): string
     {
         if ($cr->condition_operator === 'not_equals') {
-            return 'other';
+            return 'not_'.$cr->condition_value;
         }
 
         return $cr->condition_value;
@@ -61,18 +61,18 @@ class CurlCommandBuilder
         }
 
         foreach ($headers as $name => $value) {
-            $parts[] = "-H \"{$name}: {$value}\"";
+            $parts[] = '-H '.escapeshellarg("{$name}: {$value}");
         }
 
         if ($body !== null) {
-            $parts[] = "-d '{$body}'";
+            $parts[] = '-d '.escapeshellarg($body);
         }
 
         if ($queryParams !== []) {
             $url .= '?'.http_build_query($queryParams);
         }
 
-        $parts[] = "\"{$url}\"";
+        $parts[] = escapeshellarg($url);
 
         return implode(" \\\n  ", $parts);
     }
