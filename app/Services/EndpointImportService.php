@@ -3,21 +3,23 @@
 namespace App\Services;
 
 use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Models\User;
 use Illuminate\Support\Str;
 
 class EndpointImportService
 {
-    public function import(User $user, array $data): Endpoint
+    public function import(User $user, array $data, EndpointCollection $collection): Endpoint
     {
         $slug = $data['slug'] ?? null;
 
-        if (! $slug || Endpoint::where('slug', $slug)->exists()) {
+        if (! $slug || $collection->endpoints()->where('slug', $slug)->exists()) {
             $slug = Str::uuid();
         }
 
         /** @var Endpoint $endpoint */
-        $endpoint = $user->endpoints()->create([
+        $endpoint = $collection->endpoints()->create([
+            'user_id' => $user->id,
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
             'slug' => $slug,

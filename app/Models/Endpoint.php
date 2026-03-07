@@ -15,6 +15,7 @@ class Endpoint extends Model
 
     protected $fillable = [
         'user_id',
+        'collection_id',
         'name',
         'description',
         'slug',
@@ -50,6 +51,12 @@ class Endpoint extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<EndpointCollection, $this> */
+    public function collection(): BelongsTo
+    {
+        return $this->belongsTo(EndpointCollection::class, 'collection_id');
+    }
+
     /** @return HasMany<EndpointLog, $this> */
     public function logs(): HasMany
     {
@@ -64,6 +71,8 @@ class Endpoint extends Model
 
     public function getMockUrlAttribute(): string
     {
-        return url("/mock/{$this->slug}");
+        $collectionSlug = $this->collection->slug ?? $this->collection_id;
+
+        return url("/mock/{$collectionSlug}/{$this->slug}");
     }
 }

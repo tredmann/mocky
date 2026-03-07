@@ -8,7 +8,10 @@ uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 // Helpers
 function endpoint(array $attributes = []): Endpoint
 {
-    return Endpoint::factory()->create($attributes);
+    $endpoint = Endpoint::factory()->create($attributes);
+    $endpoint->load('collection');
+
+    return $endpoint;
 }
 
 function conditionalFor(Endpoint $endpoint, array $attributes = []): ConditionalResponse
@@ -19,11 +22,16 @@ function conditionalFor(Endpoint $endpoint, array $attributes = []): Conditional
     ));
 }
 
+function mockUrl(Endpoint $endpoint): string
+{
+    return '/mock/'.$endpoint->collection->slug.'/'.$endpoint->slug;
+}
+
 // Default response
 test('returns the default response when no conditions match', function () {
     $endpoint = endpoint(['method' => 'GET', 'status_code' => 200, 'response_body' => '{"message":"default"}']);
 
-    $this->getJson(route('mock', $endpoint))
+    $this->getJson(mockUrl($endpoint))
         ->assertStatus(200)
         ->assertJson(['message' => 'default']);
 });
@@ -31,7 +39,7 @@ test('returns the default response when no conditions match', function () {
 test('returns 405 when request method does not match', function () {
     $endpoint = endpoint(['method' => 'GET']);
 
-    $this->postJson(route('mock', $endpoint))
+    $this->postJson(mockUrl($endpoint))
         ->assertStatus(405);
 });
 
@@ -48,7 +56,7 @@ test('matches condition on json body field', function () {
         'response_body' => '{"message":"matched"}',
     ]);
 
-    $this->postJson(route('mock', $endpoint), ['id' => 1])
+    $this->postJson(mockUrl($endpoint), ['id' => 1])
         ->assertStatus(201)
         ->assertJson(['message' => 'matched']);
 });
@@ -65,7 +73,7 @@ test('matches condition on nested json body field', function () {
         'response_body' => '{"message":"nested match"}',
     ]);
 
-    $this->postJson(route('mock', $endpoint), ['user' => ['id' => 42]])
+    $this->postJson(mockUrl($endpoint), ['user' => ['id' => 42]])
         ->assertStatus(200)
         ->assertJson(['message' => 'nested match']);
 });
@@ -81,7 +89,7 @@ test('falls back to default when body condition does not match', function () {
         'status_code' => 200,
     ]);
 
-    $this->postJson(route('mock', $endpoint), ['id' => 99])
+    $this->postJson(mockUrl($endpoint), ['id' => 99])
         ->assertStatus(404)
         ->assertJson(['message' => 'default']);
 });
@@ -99,7 +107,7 @@ test('matches condition on query parameter', function () {
         'response_body' => '{"message":"query matched"}',
     ]);
 
-    $this->getJson(route('mock', $endpoint).'?status=active')
+    $this->getJson(mockUrl($endpoint).'?status=active')
         ->assertStatus(200)
         ->assertJson(['message' => 'query matched']);
 });
@@ -115,7 +123,7 @@ test('falls back to default when query condition does not match', function () {
         'status_code' => 200,
     ]);
 
-    $this->getJson(route('mock', $endpoint).'?status=inactive')
+    $this->getJson(mockUrl($endpoint).'?status=inactive')
         ->assertStatus(404);
 });
 
@@ -132,7 +140,7 @@ test('matches condition on request header', function () {
         'response_body' => '{"message":"header matched"}',
     ]);
 
-    $this->getJson(route('mock', $endpoint), ['X-Api-Key' => 'secret'])
+    $this->getJson(mockUrl($endpoint), ['X-Api-Key' => 'secret'])
         ->assertStatus(200)
         ->assertJson(['message' => 'header matched']);
 });
@@ -148,7 +156,7 @@ test('falls back to default when header condition does not match', function () {
         'status_code' => 200,
     ]);
 
-    $this->getJson(route('mock', $endpoint), ['X-Api-Key' => 'wrong'])
+    $this->getJson(mockUrl($endpoint), ['X-Api-Key' => 'wrong'])
         ->assertStatus(401);
 });
 
@@ -165,7 +173,7 @@ test('matches condition on first path segment', function () {
         'response_body' => '{"message":"path matched"}',
     ]);
 
-    $this->getJson(route('mock', $endpoint).'/42')
+    $this->getJson(mockUrl($endpoint).'/42')
         ->assertStatus(200)
         ->assertJson(['message' => 'path matched']);
 });
@@ -182,7 +190,7 @@ test('matches condition on second path segment', function () {
         'response_body' => '{"message":"second segment matched"}',
     ]);
 
-    $this->getJson(route('mock', $endpoint).'/42/orders')
+    $this->getJson(mockUrl($endpoint).'/42/orders')
         ->assertStatus(200)
         ->assertJson(['message' => 'second segment matched']);
 });
@@ -198,7 +206,7 @@ test('falls back to default when path condition does not match', function () {
         'status_code' => 200,
     ]);
 
-    $this->getJson(route('mock', $endpoint).'/99')
+    $this->getJson(mockUrl($endpoint).'/99')
         ->assertStatus(404);
 });
 
@@ -215,7 +223,7 @@ test('not_equals operator matches when value differs', function () {
         'response_body' => '{"message":"forbidden"}',
     ]);
 
-    $this->postJson(route('mock', $endpoint), ['role' => 'guest'])
+    $this->postJson(mockUrl($endpoint), ['role' => 'guest'])
         ->assertStatus(403)
         ->assertJson(['message' => 'forbidden']);
 });
@@ -232,7 +240,7 @@ test('contains operator matches when value is substring', function () {
         'response_body' => '{"message":"admin email"}',
     ]);
 
-    $this->postJson(route('mock', $endpoint), ['email' => 'user@admin.com'])
+    $this->postJson(mockUrl($endpoint), ['email' => 'user@admin.com'])
         ->assertStatus(200)
         ->assertJson(['message' => 'admin email']);
 });
@@ -261,7 +269,7 @@ test('first matching condition by priority wins', function () {
         'priority' => 2,
     ]);
 
-    $this->postJson(route('mock', $endpoint), ['id' => 1])
+    $this->postJson(mockUrl($endpoint), ['id' => 1])
         ->assertStatus(200)
         ->assertJson(['message' => 'first']);
 });

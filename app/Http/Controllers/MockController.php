@@ -2,15 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Models\EndpointLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class MockController extends Controller
 {
-    public function handle(Request $request, Endpoint $endpoint, string $path = ''): Response
+    public function handle(Request $request, string $collectionSlug, string $endpointSlug, string $path = ''): Response
     {
+        $collection = EndpointCollection::where('slug', $collectionSlug)->first();
+
+        if (! $collection) {
+            return response('Not Found', 404)->header('Content-Type', 'application/json');
+        }
+
+        $endpoint = $collection->endpoints()->where('slug', $endpointSlug)->first();
+
+        if (! $endpoint) {
+            return response('Not Found', 404)->header('Content-Type', 'application/json');
+        }
+
         if (! $endpoint->is_active) {
             return response('Not Found', 404)->header('Content-Type', 'application/json');
         }

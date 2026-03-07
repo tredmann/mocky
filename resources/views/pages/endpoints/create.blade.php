@@ -1,17 +1,24 @@
 <?php
 
-use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Rules\ValidResponseSyntax;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('New Endpoint')] class extends Component {
+    public EndpointCollection $collection;
+
     public string $name = '';
     public string $description = '';
     public string $method = 'GET';
     public int $status_code = 200;
     public string $content_type = 'application/json';
     public string $response_body = '';
+
+    public function mount(): void
+    {
+        abort_unless($this->collection->user_id === auth()->id(), 403);
+    }
 
     public function save(): void
     {
@@ -24,7 +31,10 @@ new #[Title('New Endpoint')] class extends Component {
             'response_body' => ['nullable', 'string', new ValidResponseSyntax],
         ]);
 
-        $endpoint = auth()->user()->endpoints()->create($validated);
+        $endpoint = $this->collection->endpoints()->create([
+            ...$validated,
+            'user_id' => auth()->id(),
+        ]);
 
         $this->redirectRoute('endpoints.show', $endpoint, navigate: true);
     }
@@ -32,8 +42,14 @@ new #[Title('New Endpoint')] class extends Component {
 
 <div class="mx-auto w-full max-w-2xl space-y-6">
     <div class="flex items-center gap-3">
-        <flux:button href="{{ route('dashboard') }}" variant="ghost" icon="arrow-left" size="sm" />
+        <flux:button href="{{ route('collections.show', $collection) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">New Endpoint</flux:heading>
+        <flux:badge color="zinc" size="sm">{{ $collection->name }}</flux:badge>
+    </div>
+
+    <div class="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800">
+        <p class="text-xs font-medium text-neutral-400">URL Prefix</p>
+        <code class="text-sm">{{ $collection->mock_url_prefix }}/</code>
     </div>
 
     <form wire:submit="save" class="space-y-4" x-data="{ editorHasError: false }" @editor-error.window="if ($event.detail.field === 'response_body') editorHasError = $event.detail.hasError">
@@ -101,7 +117,7 @@ new #[Title('New Endpoint')] class extends Component {
         </flux:card>
 
         <div class="flex justify-end gap-3">
-            <flux:button href="{{ route('dashboard') }}" variant="ghost">Cancel</flux:button>
+            <flux:button href="{{ route('collections.show', $collection) }}" variant="ghost">Cancel</flux:button>
             <flux:button type="submit" variant="primary" x-bind:disabled="editorHasError">Create Endpoint</flux:button>
         </div>
 

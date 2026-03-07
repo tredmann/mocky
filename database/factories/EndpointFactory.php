@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\EndpointCollection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -12,6 +13,7 @@ class EndpointFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'collection_id' => EndpointCollection::factory(),
             'name' => $this->faker->words(3, true),
             'description' => $this->faker->optional()->sentence(),
             'slug' => Str::uuid(),

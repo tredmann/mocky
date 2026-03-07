@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\EndpointCollection;
 use App\Models\User;
 use App\Services\EndpointImportService;
 use Illuminate\Console\Command;
 
 class EndpointImport extends Command
 {
-    protected $signature = 'endpoint:import {file} {--user= : User email or ID to assign the endpoint to}';
+    protected $signature = 'endpoint:import {file} {--user= : User email or ID to assign the endpoint to} {--collection= : Collection slug to import into}';
 
     protected $description = 'Import an endpoint definition from a JSON file';
 
@@ -55,9 +56,25 @@ class EndpointImport extends Command
             return self::FAILURE;
         }
 
-        $endpoint = $importService->import($user, $data);
+        $collectionSlug = $this->option('collection');
 
-        $this->info("Imported [{$endpoint->name}] with slug [{$endpoint->slug}] for user [{$user->email}].");
+        if ($collectionSlug) {
+            $collection = EndpointCollection::where('slug', $collectionSlug)
+                ->where('user_id', $user->id)
+                ->first();
+        } else {
+            $collection = $user->endpointCollections()->first();
+        }
+
+        if (! $collection) {
+            $this->error('Collection not found. Use --collection=<slug> to specify a collection.');
+
+            return self::FAILURE;
+        }
+
+        $endpoint = $importService->import($user, $data, $collection);
+
+        $this->info("Imported [{$endpoint->name}] with slug [{$endpoint->slug}] into collection [{$collection->slug}] for user [{$user->email}].");
 
         return self::SUCCESS;
     }

@@ -16,6 +16,7 @@ new #[Title('Endpoint')] class extends Component {
     public function mount(): void
     {
         abort_unless($this->endpoint->user_id === auth()->id(), 403);
+        $this->endpoint->load('collection');
     }
 
     public function toggleActive(): void
@@ -27,7 +28,7 @@ new #[Title('Endpoint')] class extends Component {
     {
         $this->endpoint->delete();
 
-        $this->redirectRoute('dashboard', navigate: true);
+        $this->redirectRoute('collections.show', $this->endpoint->collection, navigate: true);
     }
 
     public function export(EndpointExportService $service): mixed
@@ -69,7 +70,7 @@ new #[Title('Endpoint')] class extends Component {
     {{-- Header --}}
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-            <flux:button href="{{ route('dashboard') }}" variant="ghost" icon="arrow-left" size="sm" />
+            <flux:button href="{{ route('collections.show', $endpoint->collection) }}" variant="ghost" icon="arrow-left" size="sm" />
             <flux:heading size="xl">{{ $endpoint->name }}</flux:heading>
             <flux:switch
                 wire:click="toggleActive"

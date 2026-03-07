@@ -55,6 +55,12 @@ class User extends Authenticatable
     /**
      * Get the user's initials
      */
+    /** @return HasMany<EndpointCollection, $this> */
+    public function endpointCollections(): HasMany
+    {
+        return $this->hasMany(EndpointCollection::class);
+    }
+
     /** @return HasMany<Endpoint, $this> */
     public function endpoints(): HasMany
     {

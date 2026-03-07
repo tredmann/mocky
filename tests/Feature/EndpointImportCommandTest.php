@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
 
@@ -25,23 +26,31 @@ function importFixture(array $overrides = []): string
     return $path;
 }
 
-test('imports endpoint from file', function () {
+function userWithCollection(): array
+{
     $user = User::factory()->create();
+    $collection = EndpointCollection::factory()->create(['user_id' => $user->id, 'slug' => 'test-collection']);
+
+    return [$user, $collection];
+}
+
+test('imports endpoint from file', function () {
+    [$user, $collection] = userWithCollection();
     $path = importFixture();
 
-    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email])
+    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email, '--collection' => $collection->slug])
         ->assertSuccessful();
 
-    expect(Endpoint::where('slug', 'test-endpoint')->exists())->toBeTrue();
+    expect(Endpoint::where('slug', 'test-endpoint')->where('collection_id', $collection->id)->exists())->toBeTrue();
 
     File::delete($path);
 });
 
 test('assigns endpoint to user by email', function () {
-    $user = User::factory()->create();
+    [$user, $collection] = userWithCollection();
     $path = importFixture(['slug' => 'by-email']);
 
-    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email])
+    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email, '--collection' => $collection->slug])
         ->assertSuccessful();
 
     $endpoint = Endpoint::where('slug', 'by-email')->first();
@@ -52,10 +61,10 @@ test('assigns endpoint to user by email', function () {
 });
 
 test('assigns endpoint to user by id', function () {
-    $user = User::factory()->create();
+    [$user, $collection] = userWithCollection();
     $path = importFixture(['slug' => 'by-id']);
 
-    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->id])
+    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->id, '--collection' => $collection->slug])
         ->assertSuccessful();
 
     $endpoint = Endpoint::where('slug', 'by-id')->first();
@@ -65,8 +74,8 @@ test('assigns endpoint to user by id', function () {
     File::delete($path);
 });
 
-test('defaults to first user when no user option given', function () {
-    $user = User::factory()->create();
+test('defaults to first user and their first collection when no options given', function () {
+    [$user, $collection] = userWithCollection();
     $path = importFixture(['slug' => 'default-user']);
 
     $this->artisan('endpoint:import', ['file' => $path])
@@ -74,13 +83,14 @@ test('defaults to first user when no user option given', function () {
 
     $endpoint = Endpoint::where('slug', 'default-user')->first();
 
-    expect($endpoint->user_id)->toBe($user->id);
+    expect($endpoint->user_id)->toBe($user->id)
+        ->and($endpoint->collection_id)->toBe($collection->id);
 
     File::delete($path);
 });
 
 test('imports conditional responses', function () {
-    $user = User::factory()->create();
+    [$user, $collection] = userWithCollection();
     $path = importFixture([
         'slug' => 'with-conditionals',
         'conditional_responses' => [
@@ -97,7 +107,7 @@ test('imports conditional responses', function () {
         ],
     ]);
 
-    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email])
+    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email, '--collection' => $collection->slug])
         ->assertSuccessful();
 
     $endpoint = Endpoint::where('slug', 'with-conditionals')->first();
@@ -132,10 +142,10 @@ test('fails when user is not found', function () {
 });
 
 test('outputs success message containing endpoint name', function () {
-    $user = User::factory()->create();
+    [$user, $collection] = userWithCollection();
     $path = importFixture(['name' => 'My API', 'slug' => 'my-api-cmd']);
 
-    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email])
+    $this->artisan('endpoint:import', ['file' => $path, '--user' => $user->email, '--collection' => $collection->slug])
         ->expectsOutputToContain('My API')
         ->assertSuccessful();
 

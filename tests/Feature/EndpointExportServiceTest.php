@@ -66,7 +66,8 @@ test('exports endpoint fields', function () {
         ->and($data['status_code'])->toBe(200)
         ->and($data['content_type'])->toBe('application/json')
         ->and($data['response_body'])->toBe('{"message":"ok"}')
-        ->and($data['is_active'])->toBeTrue();
+        ->and($data['is_active'])->toBeTrue()
+        ->and($data)->toHaveKey('collection_slug');
 });
 
 test('exports with empty conditional responses when none exist', function () {
@@ -119,6 +120,7 @@ test('exports multiple conditional responses', function () {
 
 test('exported json can be reimported', function () {
     $original = Endpoint::factory()->create(['slug' => 'original-slug']);
+    $original->load('collection');
 
     ConditionalResponse::factory()->create([
         'endpoint_id' => $original->id,
@@ -137,6 +139,7 @@ test('exported json can be reimported', function () {
     $imported = app(App\Services\EndpointImportService::class)->import(
         $original->user,
         $data,
+        $original->collection,
     );
 
     expect($imported->name)->toBe($original->name)

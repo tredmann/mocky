@@ -35,6 +35,7 @@ new #[Title('Edit Endpoint')] class extends Component {
     public function mount(): void
     {
         abort_unless($this->endpoint->user_id === auth()->id(), 403);
+        $this->endpoint->load('collection');
 
         $this->cr_condition_source = $this->endpoint->method === 'GET' ? 'query' : 'body';
 
@@ -135,7 +136,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
     {{-- Header --}}
     <div class="flex items-center gap-3">
-        <flux:button href="{{ route('dashboard') }}" variant="ghost" icon="arrow-left" size="sm" />
+        <flux:button href="{{ route('endpoints.show', $endpoint) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">Edit Endpoint</flux:heading>
     </div>
 
@@ -218,7 +219,7 @@ new #[Title('Edit Endpoint')] class extends Component {
             @if ($saved)
                 <flux:text class="text-green-600 dark:text-green-400">Saved!</flux:text>
             @endif
-            <flux:button href="{{ route('dashboard') }}" variant="ghost">Cancel</flux:button>
+            <flux:button href="{{ route('endpoints.show', $endpoint) }}" variant="ghost">Cancel</flux:button>
             <flux:button type="submit" variant="primary" wire:click="$set('saved', false)" x-bind:disabled="responseBodyError">Save Changes</flux:button>
         </div>
 
@@ -301,7 +302,7 @@ new #[Title('Edit Endpoint')] class extends Component {
                             <flux:label>Field</flux:label>
                             @if ($cr_condition_source === 'path')
                                 <flux:input wire:model="cr_condition_field" type="number" min="0" placeholder="0" />
-                                <flux:description>Segment index (0-based). /mock/slug/foo/bar → 0=foo, 1=bar</flux:description>
+                                <flux:description>Segment index (0-based). {{ $endpoint->mock_url }}/foo/bar → 0=foo, 1=bar</flux:description>
                             @else
                                 <flux:input wire:model="cr_condition_field" placeholder="{{ $cr_condition_source === 'header' ? 'e.g. X-Api-Key' : 'e.g. id' }}" />
                             @endif
@@ -332,7 +333,7 @@ new #[Title('Edit Endpoint')] class extends Component {
                             <p class="font-medium">Matching on query parameter</p>
                             <p class="mt-1 text-xs">Use the query parameter name as the field.</p>
                             <div class="mt-2 font-mono text-xs">
-                                <p>/mock/{{ $endpoint->slug }}?<strong>status</strong>=active &rarr; field: <strong>status</strong></p>
+                                <p>{{ $endpoint->mock_url }}?<strong>status</strong>=active &rarr; field: <strong>status</strong></p>
                             </div>
                         @elseif ($cr_condition_source === 'header')
                             <p class="font-medium">Matching on request header</p>
@@ -344,8 +345,8 @@ new #[Title('Edit Endpoint')] class extends Component {
                             <p class="font-medium">Matching on URL path segment</p>
                             <p class="mt-1 text-xs">Use the segment index (0-based) as the field. Segments are the parts of the URL after the slug.</p>
                             <div class="mt-2 font-mono text-xs">
-                                <p>/mock/{{ $endpoint->slug }}/<strong>foo</strong>/bar &rarr; index: <strong>0</strong></p>
-                                <p>/mock/{{ $endpoint->slug }}/foo/<strong>bar</strong> &rarr; index: <strong>1</strong></p>
+                                <p>{{ $endpoint->mock_url }}/<strong>foo</strong>/bar &rarr; index: <strong>0</strong></p>
+                                <p>{{ $endpoint->mock_url }}/foo/<strong>bar</strong> &rarr; index: <strong>1</strong></p>
                             </div>
                         @endif
                     </div>

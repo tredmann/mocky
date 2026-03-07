@@ -4,24 +4,33 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\Endpoint;
+use App\Models\EndpointCollection;
 use App\Services\EndpointExportService;
 use Illuminate\Console\Command;
 
 class EndpointExport extends Command
 {
-    protected $signature = 'endpoint:export {slug} {--output= : Output file path (defaults to <slug>.json)}';
+    protected $signature = 'endpoint:export {collection : Collection slug} {slug : Endpoint slug} {--output= : Output file path (defaults to <slug>.json)}';
 
     protected $description = 'Export an endpoint definition to a JSON file';
 
     public function handle(EndpointExportService $exportService): int
     {
+        $collectionSlug = $this->argument('collection');
         $slug = $this->argument('slug');
 
-        $endpoint = Endpoint::where('slug', $slug)->first();
+        $collection = EndpointCollection::where('slug', $collectionSlug)->first();
+
+        if (! $collection) {
+            $this->error("Collection with slug [{$collectionSlug}] not found.");
+
+            return self::FAILURE;
+        }
+
+        $endpoint = $collection->endpoints()->where('slug', $slug)->first();
 
         if (! $endpoint) {
-            $this->error("Endpoint with slug [{$slug}] not found.");
+            $this->error("Endpoint with slug [{$slug}] not found in collection [{$collectionSlug}].");
 
             return self::FAILURE;
         }

@@ -6,35 +6,48 @@ use App\Models\EndpointLog;
 
 uses(Illuminate\Foundation\Testing\RefreshDatabase::class);
 
+function mockEndpoint(array $attributes = []): Endpoint
+{
+    $endpoint = Endpoint::factory()->create($attributes);
+    $endpoint->load('collection');
+
+    return $endpoint;
+}
+
+function endpointMockUrl(Endpoint $endpoint): string
+{
+    return '/mock/'.$endpoint->collection->slug.'/'.$endpoint->slug;
+}
+
 // --- Inactive / not found ---
 
 test('inactive endpoint returns 404', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET', 'is_active' => false]);
+    $endpoint = mockEndpoint(['method' => 'GET', 'is_active' => false]);
 
-    $this->getJson(route('mock', $endpoint))
+    $this->getJson(endpointMockUrl($endpoint))
         ->assertStatus(404);
 });
 
 test('unknown slug returns 404', function () {
-    $this->getJson('/mock/nonexistent-slug')
+    $this->getJson('/mock/nonexistent-collection/nonexistent-slug')
         ->assertStatus(404);
 });
 
 // --- Method enforcement ---
 
 test('returns 405 with allow header when method does not match', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'POST']);
+    $endpoint = mockEndpoint(['method' => 'POST']);
 
-    $this->getJson(route('mock', $endpoint))
+    $this->getJson(endpointMockUrl($endpoint))
         ->assertStatus(405)
         ->assertHeader('Allow', 'POST');
 });
 
 test('all http methods are accepted when configured', function () {
     foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as $method) {
-        $endpoint = Endpoint::factory()->create(['method' => $method, 'status_code' => 200]);
+        $endpoint = mockEndpoint(['method' => $method, 'status_code' => 200]);
 
-        $response = $this->json($method, route('mock', $endpoint));
+        $response = $this->json($method, endpointMockUrl($endpoint));
 
         $response->assertStatus(200);
     }
@@ -43,18 +56,18 @@ test('all http methods are accepted when configured', function () {
 // --- Content-Type header ---
 
 test('response has the configured content type', function () {
-    $endpoint = Endpoint::factory()->create([
+    $endpoint = mockEndpoint([
         'method' => 'GET',
         'content_type' => 'application/json',
         'status_code' => 200,
     ]);
 
-    $this->getJson(route('mock', $endpoint))
+    $this->getJson(endpointMockUrl($endpoint))
         ->assertHeader('Content-Type', 'application/json');
 });
 
 test('response uses conditional content type when condition matches', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET', 'content_type' => 'text/plain']);
+    $endpoint = mockEndpoint(['method' => 'GET', 'content_type' => 'text/plain']);
 
     ConditionalResponse::factory()->create([
         'endpoint_id' => $endpoint->id,
@@ -66,16 +79,16 @@ test('response uses conditional content type when condition matches', function (
         'status_code' => 200,
     ]);
 
-    $this->getJson(route('mock', $endpoint).'?format=json')
+    $this->getJson(endpointMockUrl($endpoint).'?format=json')
         ->assertHeader('Content-Type', 'application/json');
 });
 
 // --- Response body ---
 
 test('returns empty body when response body is null', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET', 'response_body' => null, 'status_code' => 204]);
+    $endpoint = mockEndpoint(['method' => 'GET', 'response_body' => null, 'status_code' => 204]);
 
-    $this->getJson(route('mock', $endpoint))
+    $this->getJson(endpointMockUrl($endpoint))
         ->assertStatus(204)
         ->assertNoContent();
 });
@@ -83,26 +96,26 @@ test('returns empty body when response body is null', function () {
 // --- CSRF exempt ---
 
 test('post request does not require csrf token', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'POST', 'status_code' => 200]);
+    $endpoint = mockEndpoint(['method' => 'POST', 'status_code' => 200]);
 
-    $this->post(route('mock', $endpoint))
+    $this->post(endpointMockUrl($endpoint))
         ->assertStatus(200);
 });
 
 // --- Logging ---
 
 test('every request is logged', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET']);
+    $endpoint = mockEndpoint(['method' => 'GET']);
 
-    $this->getJson(route('mock', $endpoint));
+    $this->getJson(endpointMockUrl($endpoint));
 
     expect(EndpointLog::where('endpoint_id', $endpoint->id)->count())->toBe(1);
 });
 
 test('log stores request method ip and user agent', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET']);
+    $endpoint = mockEndpoint(['method' => 'GET']);
 
-    $this->getJson(route('mock', $endpoint), ['User-Agent' => 'TestAgent/1.0']);
+    $this->getJson(endpointMockUrl($endpoint), ['User-Agent' => 'TestAgent/1.0']);
 
     $log = EndpointLog::where('endpoint_id', $endpoint->id)->first();
 
@@ -112,9 +125,9 @@ test('log stores request method ip and user agent', function () {
 });
 
 test('log stores request body', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'POST']);
+    $endpoint = mockEndpoint(['method' => 'POST']);
 
-    $this->postJson(route('mock', $endpoint), ['foo' => 'bar']);
+    $this->postJson(endpointMockUrl($endpoint), ['foo' => 'bar']);
 
     $log = EndpointLog::where('endpoint_id', $endpoint->id)->first();
 
@@ -122,9 +135,9 @@ test('log stores request body', function () {
 });
 
 test('log stores query parameters', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET']);
+    $endpoint = mockEndpoint(['method' => 'GET']);
 
-    $this->getJson(route('mock', $endpoint).'?page=2');
+    $this->getJson(endpointMockUrl($endpoint).'?page=2');
 
     $log = EndpointLog::where('endpoint_id', $endpoint->id)->first();
 
@@ -132,13 +145,13 @@ test('log stores query parameters', function () {
 });
 
 test('log stores the response status code and body', function () {
-    $endpoint = Endpoint::factory()->create([
+    $endpoint = mockEndpoint([
         'method' => 'GET',
         'status_code' => 418,
         'response_body' => '{"teapot":true}',
     ]);
 
-    $this->getJson(route('mock', $endpoint));
+    $this->getJson(endpointMockUrl($endpoint));
 
     $log = EndpointLog::where('endpoint_id', $endpoint->id)->first();
 
@@ -147,7 +160,7 @@ test('log stores the response status code and body', function () {
 });
 
 test('log stores matched conditional response id when condition matches', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET']);
+    $endpoint = mockEndpoint(['method' => 'GET']);
 
     $cr = ConditionalResponse::factory()->create([
         'endpoint_id' => $endpoint->id,
@@ -158,7 +171,7 @@ test('log stores matched conditional response id when condition matches', functi
         'status_code' => 200,
     ]);
 
-    $this->getJson(route('mock', $endpoint).'?match=yes');
+    $this->getJson(endpointMockUrl($endpoint).'?match=yes');
 
     $log = EndpointLog::where('endpoint_id', $endpoint->id)->first();
 
@@ -166,9 +179,9 @@ test('log stores matched conditional response id when condition matches', functi
 });
 
 test('log has null matched conditional response id when no condition matches', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET']);
+    $endpoint = mockEndpoint(['method' => 'GET']);
 
-    $this->getJson(route('mock', $endpoint));
+    $this->getJson(endpointMockUrl($endpoint));
 
     $log = EndpointLog::where('endpoint_id', $endpoint->id)->first();
 
@@ -176,11 +189,11 @@ test('log has null matched conditional response id when no condition matches', f
 });
 
 test('multiple requests create multiple log entries', function () {
-    $endpoint = Endpoint::factory()->create(['method' => 'GET']);
+    $endpoint = mockEndpoint(['method' => 'GET']);
 
-    $this->getJson(route('mock', $endpoint));
-    $this->getJson(route('mock', $endpoint));
-    $this->getJson(route('mock', $endpoint));
+    $this->getJson(endpointMockUrl($endpoint));
+    $this->getJson(endpointMockUrl($endpoint));
+    $this->getJson(endpointMockUrl($endpoint));
 
     expect(EndpointLog::where('endpoint_id', $endpoint->id)->count())->toBe(3);
 });
