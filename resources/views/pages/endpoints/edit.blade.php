@@ -68,7 +68,7 @@ new #[Title('Edit Endpoint')] class extends Component {
         ]);
 
         $this->endpoint->update($validated);
-        $this->saved = true;
+        $this->redirectRoute('endpoints.show', $this->endpoint, navigate: true);
     }
 
     public function addConditionalResponse(): void

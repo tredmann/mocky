@@ -25,7 +25,7 @@ new #[Title('New Endpoint')] class extends Component {
 
         $endpoint = auth()->user()->endpoints()->create($validated);
 
-        $this->redirectRoute('endpoints.edit', $endpoint, navigate: true);
+        $this->redirectRoute('endpoints.show', $endpoint, navigate: true);
     }
 }; ?>
 
