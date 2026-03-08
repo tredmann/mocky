@@ -38,7 +38,7 @@ new #[Title('Logs')] class extends Component {
     }
 }; ?>
 
-<div class="mx-auto w-full max-w-4xl space-y-6">
+<div class="w-full space-y-6">
 
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">

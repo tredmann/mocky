@@ -31,7 +31,7 @@ new #[Title('Edit Collection')] class extends Component {
     }
 }; ?>
 
-<div class="mx-auto w-full max-w-2xl space-y-6">
+<div class="w-full space-y-6">
     <div class="flex items-center gap-3">
         <flux:button href="{{ route('collections.show', $collection) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">Edit Collection</flux:heading>

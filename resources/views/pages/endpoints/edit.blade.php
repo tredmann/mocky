@@ -63,7 +63,7 @@ new #[Title('Edit Endpoint')] class extends Component {
     }
 }; ?>
 
-<div class="mx-auto w-full max-w-2xl space-y-6" x-data="{ responseBodyError: false }" @editor-error.window="if ($event.detail.field === 'response_body') responseBodyError = $event.detail.hasError">
+<div class="w-full space-y-6" x-data="{ responseBodyError: false }" @editor-error.window="if ($event.detail.field === 'response_body') responseBodyError = $event.detail.hasError">
 
     {{-- Header --}}
     <div class="flex items-center gap-3">

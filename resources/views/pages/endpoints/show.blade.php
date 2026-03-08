@@ -67,7 +67,7 @@ new #[Title('Endpoint')] class extends Component {
     }
 }; ?>
 
-<div class="mx-auto w-full max-w-2xl space-y-6" x-on:open-curl-modal.window="$flux.modal('curl').show()">
+<div class="w-full space-y-6" x-on:open-curl-modal.window="$flux.modal('curl').show()">
 
     {{-- Header --}}
     <div class="flex items-center justify-between">
