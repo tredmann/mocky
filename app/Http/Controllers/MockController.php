@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\EndpointCollection;
-use App\Models\EndpointLog;
+use App\Services\MockRequestLogger;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class MockController extends Controller
 {
+    public function __construct(private MockRequestLogger $logger) {}
+
     public function handle(Request $request, string $collectionSlug, string $endpointSlug, string $path = ''): Response
     {
         $collection = EndpointCollection::where('slug', $collectionSlug)->first();
@@ -56,18 +58,7 @@ class MockController extends Controller
         $responseStatus = $matchedConditional ? $matchedConditional->status_code : $endpoint->status_code;
         $responseType = $matchedConditional ? $matchedConditional->content_type : $endpoint->content_type;
 
-        EndpointLog::create([
-            'endpoint_id' => $endpoint->id,
-            'matched_conditional_response_id' => $matchedConditional?->id,
-            'request_method' => $request->method(),
-            'request_ip' => $request->ip(),
-            'request_user_agent' => $request->userAgent(),
-            'request_headers' => $request->headers->all(),
-            'request_query' => $request->query->all(),
-            'request_body' => $request->getContent() ?: null,
-            'response_status_code' => $responseStatus,
-            'response_body' => $responseBody,
-        ]);
+        $this->logger->log($request, $endpoint, $matchedConditional, $responseStatus, $responseBody);
 
         return response($responseBody ?? '', $responseStatus)
             ->header('Content-Type', $responseType);
