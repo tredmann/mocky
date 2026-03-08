@@ -45,6 +45,12 @@ new #[Title('New Endpoint')] class extends Component {
 }; ?>
 
 <div class="w-full space-y-6">
+    <flux:breadcrumbs>
+        <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item :href="route('collections.show', $collection)" wire:navigate>{{ $collection->name }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>New Endpoint</flux:breadcrumbs.item>
+    </flux:breadcrumbs>
+
     <div class="flex items-center gap-3">
         <flux:button href="{{ route('collections.show', $collection) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">New Endpoint</flux:heading>

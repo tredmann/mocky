@@ -65,6 +65,14 @@ new #[Title('Edit Endpoint')] class extends Component {
 
 <div class="w-full space-y-6" x-data="{ responseBodyError: false }" @editor-error.window="if ($event.detail.field === 'response_body') responseBodyError = $event.detail.hasError">
 
+    {{-- Breadcrumbs --}}
+    <flux:breadcrumbs>
+        <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item :href="route('collections.show', $endpoint->collection)" wire:navigate>{{ $endpoint->collection->name }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item :href="route('endpoints.show', [$endpoint->collection, $endpoint])" wire:navigate>{{ $endpoint->name }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>Edit</flux:breadcrumbs.item>
+    </flux:breadcrumbs>
+
     {{-- Header --}}
     <div class="flex items-center gap-3">
         <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost" icon="arrow-left" size="sm" />

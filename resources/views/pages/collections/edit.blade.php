@@ -32,6 +32,12 @@ new #[Title('Edit Collection')] class extends Component {
 }; ?>
 
 <div class="w-full space-y-6">
+    <flux:breadcrumbs>
+        <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item :href="route('collections.show', $collection)" wire:navigate>{{ $collection->name }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>Edit</flux:breadcrumbs.item>
+    </flux:breadcrumbs>
+
     <div class="flex items-center gap-3">
         <flux:button href="{{ route('collections.show', $collection) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">Edit Collection</flux:heading>

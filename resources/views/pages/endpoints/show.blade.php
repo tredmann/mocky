@@ -69,6 +69,13 @@ new #[Title('Endpoint')] class extends Component {
 
 <div class="w-full space-y-6" x-on:open-curl-modal.window="$flux.modal('curl').show()">
 
+    {{-- Breadcrumbs --}}
+    <flux:breadcrumbs>
+        <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item :href="route('collections.show', $endpoint->collection)" wire:navigate>{{ $endpoint->collection->name }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>{{ $endpoint->name }}</flux:breadcrumbs.item>
+    </flux:breadcrumbs>
+
     {{-- Header --}}
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
