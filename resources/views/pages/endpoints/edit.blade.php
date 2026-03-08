@@ -27,7 +27,7 @@ new #[Title('Edit Endpoint')] class extends Component {
 
     public function mount(): void
     {
-        abort_unless($this->endpoint->user_id === auth()->id(), 403);
+        $this->authorize('update', $this->endpoint);
         $this->endpoint->load('collection');
 
         $this->name          = $this->endpoint->name;

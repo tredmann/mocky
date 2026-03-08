@@ -21,7 +21,7 @@ new #[Title('New Endpoint')] class extends Component {
 
     public function mount(): void
     {
-        abort_unless($this->collection->user_id === auth()->id(), 403);
+        $this->authorize('createEndpoint', $this->collection);
     }
 
     public function save(CreateEndpoint $action): void

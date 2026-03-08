@@ -15,7 +15,7 @@ new #[Title('Edit Collection')] class extends Component {
 
     public function mount(): void
     {
-        abort_unless($this->collection->user_id === auth()->id(), 403);
+        $this->authorize('update', $this->collection);
 
         $this->name = $this->collection->name;
         $this->description = $this->collection->description ?? '';
