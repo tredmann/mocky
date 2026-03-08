@@ -1,10 +1,13 @@
 <?php
 
+use App\Concerns\CollectionValidationRules;
 use App\Models\EndpointCollection;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Edit Collection')] class extends Component {
+    use CollectionValidationRules;
+
     public EndpointCollection $collection;
 
     public string $name = '';
@@ -20,10 +23,7 @@ new #[Title('Edit Collection')] class extends Component {
 
     public function save(): void
     {
-        $validated = $this->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $this->validate($this->collectionRules());
 
         $this->collection->update($validated);
 

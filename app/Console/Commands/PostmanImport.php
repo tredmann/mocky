@@ -4,46 +4,27 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Concerns\ResolvesImportFile;
 use App\Services\PostmanImportService;
 use Illuminate\Console\Command;
 
 class PostmanImport extends Command
 {
+    use ResolvesImportFile;
+
     protected $signature = 'postman:import {file} {--user= : User email or ID to assign the collection to}';
 
     protected $description = 'Import a Postman collection (JSON) as a collection with mock endpoints';
 
     public function handle(PostmanImportService $importService): int
     {
-        $file = $this->argument('file');
-        $realPath = realpath($file);
-
-        if ($realPath === false) {
-            $this->error("File [{$file}] not found.");
-
+        $realPath = $this->validateImportFile($this->argument('file'));
+        if ($realPath === null) {
             return self::FAILURE;
         }
 
-        $maxSize = 5 * 1024 * 1024;
-
-        if (filesize($realPath) > $maxSize) {
-            $this->error('File is too large (max 5MB).');
-
-            return self::FAILURE;
-        }
-
-        $userIdentifier = $this->option('user');
-
-        if ($userIdentifier) {
-            $user = User::find($userIdentifier) ?? User::where('email', $userIdentifier)->first();
-        } else {
-            $user = User::first();
-        }
-
+        $user = $this->resolveUser($this->option('user'));
         if (! $user) {
-            $this->error('User not found. Use --user=<email|id> to specify a user.');
-
             return self::FAILURE;
         }
 

@@ -5,3 +5,9 @@ parameters:
     paths:
         - app
     level: 5
+    ignoreErrors:
+        -
+            identifier: trait.unused
+            paths:
+                - app/Concerns/CollectionValidationRules.php
+                - app/Concerns/EndpointValidationRules.php

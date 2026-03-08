@@ -4,40 +4,27 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Concerns\ResolvesImportFile;
 use App\Services\CollectionImportService;
 use Illuminate\Console\Command;
 
 class CollectionImport extends Command
 {
+    use ResolvesImportFile;
+
     protected $signature = 'collection:import {file} {--user= : User email or ID to assign the collection to}';
 
     protected $description = 'Import a collection with all its endpoints from a JSON file';
 
     public function handle(CollectionImportService $importService): int
     {
-        $file = $this->argument('file');
-        $realPath = realpath($file);
-
-        if ($realPath === false) {
-            $this->error("File [{$file}] not found.");
-
+        $realPath = $this->validateImportFile($this->argument('file'));
+        if ($realPath === null) {
             return self::FAILURE;
         }
 
-        $maxSize = 5 * 1024 * 1024; // 5MB
-
-        if (filesize($realPath) > $maxSize) {
-            $this->error('File is too large (max 5MB).');
-
-            return self::FAILURE;
-        }
-
-        $data = json_decode(file_get_contents($realPath), true);
-
-        if (! is_array($data)) {
-            $this->error('Invalid JSON file.');
-
+        $data = $this->readJsonImportFile($realPath);
+        if ($data === null) {
             return self::FAILURE;
         }
 
@@ -47,17 +34,8 @@ class CollectionImport extends Command
             return self::FAILURE;
         }
 
-        $userIdentifier = $this->option('user');
-
-        if ($userIdentifier) {
-            $user = User::find($userIdentifier) ?? User::where('email', $userIdentifier)->first();
-        } else {
-            $user = User::first();
-        }
-
+        $user = $this->resolveUser($this->option('user'));
         if (! $user) {
-            $this->error('User not found. Use --user=<email|id> to specify a user.');
-
             return self::FAILURE;
         }
 

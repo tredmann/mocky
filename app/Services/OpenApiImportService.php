@@ -11,12 +11,12 @@ use cebe\openapi\spec\OpenApi;
 use cebe\openapi\spec\Operation;
 use cebe\openapi\spec\Response;
 use cebe\openapi\spec\Schema;
-use Illuminate\Support\Str;
 
 class OpenApiImportService
 {
     public function __construct(
         private CollectionImportService $collectionImportService,
+        private ImportPathResolver $pathResolver,
     ) {}
 
     public function importFromFile(User $user, string $filePath): EndpointCollection
@@ -51,7 +51,7 @@ class OpenApiImportService
                     continue;
                 }
 
-                [$baseSlug, $pathSegment] = $this->splitPath($path);
+                [$baseSlug, $pathSegment] = $this->pathResolver->splitPath($path);
 
                 $rawItems[] = [
                     'path' => $path,
@@ -64,11 +64,7 @@ class OpenApiImportService
         }
 
         // Group by (base_slug, method) so path-variant operations merge into one endpoint
-        $groups = [];
-        foreach ($rawItems as $rawItem) {
-            $key = $rawItem['base_slug'].'|'.$rawItem['method'];
-            $groups[$key][] = $rawItem;
-        }
+        $groups = $this->pathResolver->groupBySlugAndMethod($rawItems);
 
         foreach ($groups as $group) {
             $collectionData['endpoints'][] = $this->buildGroupEndpoint($group);
@@ -78,85 +74,12 @@ class OpenApiImportService
     }
 
     /**
-     * Split an OpenAPI path into a base slug and an optional trailing variable segment.
-     *
-     * Returns "__any__" for template params (e.g. {petId}), a concrete string for numeric
-     * segments, or null when there is no trailing variable.
-     *
-     * @return array{string, string|null}
-     */
-    private function splitPath(string $path): array
-    {
-        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
-
-        if (empty($segments)) {
-            return ['endpoint', null];
-        }
-
-        $last = end($segments);
-
-        if (count($segments) > 1 && $this->isVariableSegment($last)) {
-            array_pop($segments);
-            $baseSlug = $this->segmentsToSlug($segments);
-            $pathSegment = is_numeric($last) ? $last : '__any__';
-
-            return [$baseSlug, $pathSegment];
-        }
-
-        return [$this->segmentsToSlug($segments), null];
-    }
-
-    private function isVariableSegment(string $segment): bool
-    {
-        // OpenAPI path param: {petId}
-        if (preg_match('/^\{[^{}]+\}$/', $segment)) {
-            return true;
-        }
-
-        // Concrete numeric segment or :param style
-        return is_numeric($segment) || str_starts_with($segment, ':');
-    }
-
-    /** @param list<string> $segments */
-    private function segmentsToSlug(array $segments): string
-    {
-        // Strip any remaining template variables from middle segments
-        $clean = [];
-        foreach ($segments as $segment) {
-            $s = preg_replace('/\{[^}]+\}/', '', $segment) ?? '';
-            $s = trim($s);
-            if ($s !== '') {
-                $clean[] = $s;
-            }
-        }
-
-        $slug = Str::slug(implode('-', $clean));
-
-        return $slug !== '' ? $slug : 'endpoint';
-    }
-
-    /**
      * @param  list<array<string, mixed>>  $group
      * @return array<string, mixed>
      */
     private function buildGroupEndpoint(array $group): array
     {
-        // Separate the base item (no extra path segment) from path-variant items
-        $baseItem = null;
-        $variantItems = [];
-
-        foreach ($group as $rawItem) {
-            if ($rawItem['path_segment'] === null) {
-                $baseItem ??= $rawItem;
-            } else {
-                $variantItems[] = $rawItem;
-            }
-        }
-
-        // If every item in the group has a path segment, promote the first as the base
-        if ($baseItem === null) {
-            $baseItem = array_shift($variantItems);
-        }
+        [$baseItem, $variantItems] = $this->pathResolver->separateBaseAndVariants($group);
 
         $endpoint = $this->buildEndpointData(
             $baseItem['path'],
@@ -166,27 +89,21 @@ class OpenApiImportService
         );
 
         // Add a path-conditional response for each variant
-        $priority = count($endpoint['conditional_responses']);
-        foreach ($variantItems as $rawItem) {
-            $variantData = $this->buildEndpointData(
+        $pathConditionals = $this->pathResolver->buildPathConditionals(
+            $variantItems,
+            fn (array $rawItem) => $this->buildEndpointData(
                 $rawItem['path'],
                 $rawItem['method'],
                 $rawItem['operation'],
                 $rawItem['base_slug'],
-            );
-            $isTemplate = $rawItem['path_segment'] === '__any__';
+            ),
+            count($endpoint['conditional_responses']),
+        );
 
-            $endpoint['conditional_responses'][] = [
-                'condition_source' => 'path',
-                'condition_field' => '0',
-                'condition_operator' => $isTemplate ? 'not_equals' : 'equals',
-                'condition_value' => $isTemplate ? '' : $rawItem['path_segment'],
-                'status_code' => $variantData['status_code'],
-                'content_type' => $variantData['content_type'],
-                'response_body' => $variantData['response_body'],
-                'priority' => $priority++,
-            ];
-        }
+        $endpoint['conditional_responses'] = array_merge(
+            $endpoint['conditional_responses'],
+            $pathConditionals,
+        );
 
         return $endpoint;
     }

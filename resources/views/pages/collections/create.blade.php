@@ -1,19 +1,19 @@
 <?php
 
 use App\Actions\CreateEndpointCollection;
+use App\Concerns\CollectionValidationRules;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('New Collection')] class extends Component {
+    use CollectionValidationRules;
+
     public string $name = '';
     public string $description = '';
 
     public function save(CreateEndpointCollection $action): void
     {
-        $this->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $this->validate($this->collectionRules());
 
         $collection = $action->handle(auth()->user(), $this->name, $this->description ?: null);
 
