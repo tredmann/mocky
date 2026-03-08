@@ -15,13 +15,8 @@ use cebe\openapi\spec\Operation;
 use cebe\openapi\spec\Response;
 use cebe\openapi\spec\Schema;
 
-class OpenApiImportService
+class OpenApiImportService extends AbstractImportService
 {
-    public function __construct(
-        private CollectionImportService $collectionImportService,
-        private ImportPathResolver $pathResolver,
-    ) {}
-
     public function importFromFile(User $user, string $filePath): EndpointCollection
     {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
@@ -37,8 +32,8 @@ class OpenApiImportService
 
     public function import(User $user, OpenApi $openApi): EndpointCollection
     {
-        // Collect all (path, method, operation) tuples with their slug info
         $rawItems = [];
+
         foreach ($openApi->paths as $path => $pathItem) {
             foreach (['get', 'post', 'put', 'patch', 'delete'] as $method) {
                 /** @var Operation|null $operation */
@@ -60,52 +55,27 @@ class OpenApiImportService
             }
         }
 
-        // Group by (base_slug, method) so path-variant operations merge into one endpoint
-        $groups = $this->pathResolver->groupBySlugAndMethod($rawItems);
-
-        $endpoints = [];
-        foreach ($groups as $group) {
-            $endpoints[] = $this->buildGroupEndpoint($group);
-        }
-
         $collectionData = new CollectionData(
             name: $openApi->info->title ?? 'Imported API',
             description: $openApi->info->description ?? null,
             slug: null,
-            endpoints: $endpoints,
+            endpoints: $this->buildEndpoints($rawItems),
         );
 
         return $this->collectionImportService->import($user, $collectionData);
     }
 
-    /** @param list<array<string, mixed>> $group */
-    private function buildGroupEndpoint(array $group): EndpointData
+    protected function buildEndpointData(array $rawItem): EndpointData
     {
-        [$baseItem, $variantItems] = $this->pathResolver->separateBaseAndVariants($group);
-
-        $endpoint = $this->buildEndpointData(
-            $baseItem['path'],
-            $baseItem['method'],
-            $baseItem['operation'],
-            $baseItem['base_slug'],
+        return $this->buildEndpointDataFromOperation(
+            $rawItem['path'],
+            $rawItem['method'],
+            $rawItem['operation'],
+            $rawItem['base_slug'],
         );
-
-        // Add a path-conditional response for each variant
-        $pathConditionals = $this->pathResolver->buildPathConditionals(
-            $variantItems,
-            fn (array $rawItem) => $this->buildEndpointData(
-                $rawItem['path'],
-                $rawItem['method'],
-                $rawItem['operation'],
-                $rawItem['base_slug'],
-            ),
-            count($endpoint->conditionalResponses),
-        );
-
-        return $endpoint->withExtraConditionals($pathConditionals);
     }
 
-    private function buildEndpointData(string $path, string $method, Operation $operation, string $slug): EndpointData
+    private function buildEndpointDataFromOperation(string $path, string $method, Operation $operation, string $slug): EndpointData
     {
         $name = $operation->operationId
             ?? $operation->summary

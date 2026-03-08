@@ -10,13 +10,8 @@ use App\Data\EndpointData;
 use App\Models\EndpointCollection;
 use App\Models\User;
 
-class PostmanImportService
+class PostmanImportService extends AbstractImportService
 {
-    public function __construct(
-        private CollectionImportService $collectionImportService,
-        private ImportPathResolver $pathResolver,
-    ) {}
-
     public function importFromFile(User $user, string $filePath): EndpointCollection
     {
         $contents = file_get_contents($filePath);
@@ -33,37 +28,26 @@ class PostmanImportService
     {
         $info = $postmanData['info'] ?? [];
 
-        /** @var list<EndpointData> $endpoints */
-        $endpoints = [];
-        $this->processItems($postmanData['item'] ?? [], $endpoints);
+        $rawItems = [];
+        $this->collectItems($postmanData['item'] ?? [], $rawItems);
 
         $collectionData = new CollectionData(
             name: $info['name'] ?? 'Imported Postman Collection',
             description: $info['description'] ?? null,
             slug: null,
-            endpoints: $endpoints,
+            endpoints: $this->buildEndpoints($rawItems),
         );
 
         return $this->collectionImportService->import($user, $collectionData);
     }
 
-    /**
-     * @param  list<array<string, mixed>>  $items
-     * @param  list<EndpointData>  $endpoints
-     *
-     * @param-out list<EndpointData>  $endpoints
-     */
-    private function processItems(array $items, array &$endpoints, string $prefix = ''): void
+    protected function buildEndpointData(array $rawItem): EndpointData
     {
-        $rawItems = [];
-        $this->collectItems($items, $rawItems, $prefix);
-
-        // Group by (base_slug, method) so path-variant requests merge into one endpoint
-        $groups = $this->pathResolver->groupBySlugAndMethod($rawItems);
-
-        foreach ($groups as $group) {
-            $endpoints[] = $this->buildGroupEndpoint($group);
-        }
+        return $this->buildEndpointDataFromItem(
+            $rawItem['item'],
+            $rawItem['base_slug'],
+            $rawItem['prefix'],
+        );
     }
 
     /**
@@ -102,28 +86,7 @@ class PostmanImportService
         }
     }
 
-    /** @param list<array<string, mixed>> $group */
-    private function buildGroupEndpoint(array $group): EndpointData
-    {
-        [$baseItem, $variantItems] = $this->pathResolver->separateBaseAndVariants($group);
-
-        $endpoint = $this->buildEndpointData($baseItem['item'], $baseItem['base_slug'], $baseItem['prefix']);
-
-        // Add a path-conditional response for each variant
-        $pathConditionals = $this->pathResolver->buildPathConditionals(
-            $variantItems,
-            fn (array $rawItem) => $this->buildEndpointData(
-                $rawItem['item'],
-                $rawItem['base_slug'],
-                $rawItem['prefix'],
-            ),
-            count($endpoint->conditionalResponses),
-        );
-
-        return $endpoint->withExtraConditionals($pathConditionals);
-    }
-
-    private function buildEndpointData(array $item, string $slug, string $prefix): EndpointData
+    private function buildEndpointDataFromItem(array $item, string $slug, string $prefix): EndpointData
     {
         $request = $item['request'];
         $name = $item['name'] ?? 'Unnamed request';
