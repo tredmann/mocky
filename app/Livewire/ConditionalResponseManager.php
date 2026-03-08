@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Actions\AddConditionalResponse;
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
 use App\Rules\ValidResponseSyntax;
@@ -57,7 +58,7 @@ class ConditionalResponseManager extends Component
         return $this->endpoint->conditionalResponses()->get();
     }
 
-    public function add(): void
+    public function add(AddConditionalResponse $action): void
     {
         $this->validate([
             'condition_source' => ['required', 'in:body,query,header,path'],
@@ -69,18 +70,16 @@ class ConditionalResponseManager extends Component
             'response_body' => ['nullable', 'string', new ValidResponseSyntax],
         ]);
 
-        $priority = $this->endpoint->conditionalResponses()->max('priority') + 1;
-
-        $this->endpoint->conditionalResponses()->create([
-            'condition_source' => $this->condition_source,
-            'condition_field' => $this->condition_field,
-            'condition_operator' => $this->condition_operator,
-            'condition_value' => $this->condition_value,
-            'status_code' => $this->status_code,
-            'content_type' => $this->content_type,
-            'response_body' => $this->response_body,
-            'priority' => $priority,
-        ]);
+        $action->handle(
+            endpoint: $this->endpoint,
+            conditionSource: $this->condition_source,
+            conditionField: $this->condition_field,
+            conditionOperator: $this->condition_operator,
+            conditionValue: $this->condition_value,
+            statusCode: $this->status_code,
+            contentType: $this->content_type,
+            responseBody: $this->response_body,
+        );
 
         $this->resetForm();
         unset($this->conditionalResponses);

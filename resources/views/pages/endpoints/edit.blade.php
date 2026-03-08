@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\UpdateEndpoint;
 use App\Concerns\EndpointValidationRules;
 use App\Models\Endpoint;
 use App\Models\EndpointCollection;
@@ -39,15 +40,25 @@ new #[Title('Edit Endpoint')] class extends Component {
         $this->response_body = $this->endpoint->response_body ?? '';
     }
 
-    public function save(): void
+    public function save(UpdateEndpoint $action): void
     {
-        $validated = $this->validate($this->endpointRules(
+        $this->validate($this->endpointRules(
             $this->endpoint->collection_id,
             $this->method,
             $this->endpoint->id,
         ));
 
-        $this->endpoint->update($validated);
+        $action->handle(
+            endpoint: $this->endpoint,
+            name: $this->name,
+            slug: $this->slug,
+            method: $this->method,
+            statusCode: $this->status_code,
+            contentType: $this->content_type,
+            description: $this->description ?: null,
+            responseBody: $this->response_body ?: null,
+        );
+
         $this->redirectRoute('endpoints.show', [$this->endpoint->collection, $this->endpoint], navigate: true);
     }
 }; ?>

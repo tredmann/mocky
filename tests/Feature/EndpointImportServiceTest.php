@@ -47,7 +47,7 @@ test('imports an endpoint for the given user', function () {
         ->and($endpoint->method)->toBe('GET')
         ->and($endpoint->status_code)->toBe(200)
         ->and($endpoint->content_type)->toBe('application/json')
-        ->and($endpoint->response_body)->toBe('{"message":"ok"}')
+        ->and($endpoint->response_body)->toBe("{\n    \"message\": \"ok\"\n}")
         ->and($endpoint->is_active)->toBeTrue();
 });
 
