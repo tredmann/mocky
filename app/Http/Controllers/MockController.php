@@ -2,63 +2,43 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EndpointCollection;
+use App\Exceptions\EndpointNotFoundException;
+use App\Exceptions\MethodNotAllowedException;
+use App\Services\ConditionalMatcher;
+use App\Services\EndpointResolver;
 use App\Services\MockRequestLogger;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class MockController extends Controller
 {
-    public function __construct(private MockRequestLogger $logger) {}
+    public function __construct(
+        private MockRequestLogger $logger,
+        private EndpointResolver $resolver,
+        private ConditionalMatcher $matcher,
+    ) {}
 
     public function handle(Request $request, string $collectionSlug, string $endpointSlug, string $path = ''): Response
     {
-        $collection = EndpointCollection::where('slug', $collectionSlug)->first();
-
-        if (! $collection) {
-            return response('Not Found', 404)->header('Content-Type', 'application/json');
-        }
-
-        $endpoint = $collection->endpoints()
-            ->where('slug', $endpointSlug)
-            ->where('method', $request->method())
-            ->first();
-
-        if (! $endpoint) {
-            $allowedMethods = $collection->endpoints()
-                ->where('slug', $endpointSlug)
-                ->pluck('method');
-
-            if ($allowedMethods->isEmpty()) {
-                return response('Not Found', 404)->header('Content-Type', 'application/json');
-            }
-
+        try {
+            $endpoint = $this->resolver->resolve($collectionSlug, $endpointSlug, $request->method());
+        } catch (MethodNotAllowedException $e) {
             return response('Method Not Allowed', 405)
-                ->header('Allow', $allowedMethods->join(', '))
+                ->header('Allow', $e->getAllowedMethods())
                 ->header('Content-Type', 'application/json');
-        }
-
-        if (! $endpoint->is_active) {
+        } catch (EndpointNotFoundException) {
             return response('Not Found', 404)->header('Content-Type', 'application/json');
         }
 
         $endpoint->load('conditionalResponses');
-
         $pathSegments = $path ? explode('/', $path) : [];
-        $matchedConditional = null;
+        $matched = $this->matcher->match($endpoint->conditionalResponses, $request, $pathSegments);
 
-        foreach ($endpoint->conditionalResponses as $conditional) {
-            if ($conditional->matches($request, $pathSegments)) {
-                $matchedConditional = $conditional;
-                break;
-            }
-        }
+        $responseBody = $matched?->response_body ?? $endpoint->response_body;
+        $responseStatus = $matched?->status_code ?? $endpoint->status_code;
+        $responseType = $matched?->content_type ?? $endpoint->content_type;
 
-        $responseBody = $matchedConditional ? $matchedConditional->response_body : $endpoint->response_body;
-        $responseStatus = $matchedConditional ? $matchedConditional->status_code : $endpoint->status_code;
-        $responseType = $matchedConditional ? $matchedConditional->content_type : $endpoint->content_type;
-
-        $this->logger->log($request, $endpoint, $matchedConditional, $responseStatus, $responseBody);
+        $this->logger->log($request, $endpoint, $matched, $responseStatus, $responseBody);
 
         return response($responseBody ?? '', $responseStatus)
             ->header('Content-Type', $responseType);
