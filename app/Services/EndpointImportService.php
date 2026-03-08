@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Actions\CreateEndpoint;
 use App\Models\Endpoint;
 use App\Models\EndpointCollection;
 use App\Models\User;
@@ -9,33 +10,24 @@ use Illuminate\Support\Str;
 
 class EndpointImportService
 {
+    public function __construct(private CreateEndpoint $createEndpoint) {}
+
     public function import(User $user, array $data, EndpointCollection $collection): Endpoint
     {
         $slug = $data['slug'] ?? Str::slug($data['name']);
 
-        $method = $data['method'];
-
-        if ($collection->endpoints()->where('slug', $slug)->where('method', $method)->exists()) {
-            $base = $slug;
-            $i = 1;
-            do {
-                $slug = "{$base}-{$i}";
-                $i++;
-            } while ($collection->endpoints()->where('slug', $slug)->where('method', $method)->exists());
-        }
-
-        /** @var Endpoint $endpoint */
-        $endpoint = $collection->endpoints()->create([
-            'user_id' => $user->id,
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-            'slug' => $slug,
-            'method' => $data['method'],
-            'status_code' => $data['status_code'],
-            'content_type' => $data['content_type'],
-            'response_body' => $data['response_body'] ?? null,
-            'is_active' => $data['is_active'] ?? true,
-        ]);
+        $endpoint = $this->createEndpoint->handle(
+            $user,
+            $collection,
+            $data['name'],
+            $slug,
+            $data['method'],
+            $data['status_code'],
+            $data['content_type'],
+            $data['description'] ?? null,
+            $data['response_body'] ?? null,
+            $data['is_active'] ?? true,
+        );
 
         foreach ($data['conditional_responses'] ?? [] as $cr) {
             $endpoint->conditionalResponses()->create([

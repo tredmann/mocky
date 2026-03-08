@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\CreateEndpoint;
 use App\Models\EndpointCollection;
 use App\Rules\ValidResponseSyntax;
 use Illuminate\Validation\Rule;
@@ -22,9 +23,9 @@ new #[Title('New Endpoint')] class extends Component {
         abort_unless($this->collection->user_id === auth()->id(), 403);
     }
 
-    public function save(): void
+    public function save(CreateEndpoint $action): void
     {
-        $validated = $this->validate([
+        $this->validate([
             'name'          => ['required', 'string', 'max:255'],
             'slug'          => ['required', 'string', 'max:255', 'regex:/^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$/', Rule::unique('endpoints', 'slug')->where(fn ($query) => $query->where('collection_id', $this->collection->id)->where('method', $this->method))],
             'description'   => ['nullable', 'string', 'max:1000'],
@@ -34,10 +35,17 @@ new #[Title('New Endpoint')] class extends Component {
             'response_body' => ['nullable', 'string', new ValidResponseSyntax],
         ]);
 
-        $endpoint = $this->collection->endpoints()->create([
-            ...$validated,
-            'user_id' => auth()->id(),
-        ]);
+        $endpoint = $action->handle(
+            user: auth()->user(),
+            collection: $this->collection,
+            name: $this->name,
+            slug: $this->slug,
+            method: $this->method,
+            statusCode: $this->status_code,
+            contentType: $this->content_type,
+            description: $this->description ?: null,
+            responseBody: $this->response_body ?: null,
+        );
 
         $this->redirectRoute('endpoints.show', [$this->collection, $endpoint], navigate: true);
     }

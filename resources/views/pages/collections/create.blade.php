@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\CreateEndpointCollection;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -7,14 +8,14 @@ new #[Title('New Collection')] class extends Component {
     public string $name = '';
     public string $description = '';
 
-    public function save(): void
+    public function save(CreateEndpointCollection $action): void
     {
-        $validated = $this->validate([
+        $this->validate([
             'name'        => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $collection = auth()->user()->endpointCollections()->create($validated);
+        $collection = $action->handle(auth()->user(), $this->name, $this->description ?: null);
 
         $this->redirectRoute('collections.show', $collection, navigate: true);
     }
