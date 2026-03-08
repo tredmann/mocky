@@ -156,7 +156,7 @@ test('log stores the response status code and body', function () {
     $log = EndpointLog::where('endpoint_id', $endpoint->id)->first();
 
     expect($log->response_status_code)->toBe(418)
-        ->and($log->response_body)->toBe('{"teapot":true}');
+        ->and($log->response_body)->toBe("{\n    \"teapot\": true\n}");
 });
 
 test('log stores matched conditional response id when condition matches', function () {

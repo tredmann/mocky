@@ -6,12 +6,9 @@ namespace App\Actions;
 
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
-use App\Services\ResponseBodyFormatter;
 
 class AddConditionalResponse
 {
-    public function __construct(private ResponseBodyFormatter $formatter) {}
-
     public function handle(
         Endpoint $endpoint,
         string $conditionSource,
@@ -22,8 +19,6 @@ class AddConditionalResponse
         string $contentType,
         string $responseBody = '',
     ): ConditionalResponse {
-        $body = $this->formatter->format($contentType, $responseBody) ?? '';
-
         $priority = $endpoint->conditionalResponses()->max('priority') + 1;
 
         return $endpoint->conditionalResponses()->create([
@@ -33,7 +28,7 @@ class AddConditionalResponse
             'condition_value' => $conditionValue,
             'status_code' => $statusCode,
             'content_type' => $contentType,
-            'response_body' => $body,
+            'response_body' => $responseBody,
             'priority' => $priority,
         ]);
     }

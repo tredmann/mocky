@@ -7,12 +7,9 @@ namespace App\Actions;
 use App\Models\Endpoint;
 use App\Models\EndpointCollection;
 use App\Models\User;
-use App\Services\ResponseBodyFormatter;
 
 class CreateEndpoint
 {
-    public function __construct(private ResponseBodyFormatter $formatter) {}
-
     public function handle(
         User $user,
         EndpointCollection $collection,
@@ -35,7 +32,7 @@ class CreateEndpoint
             'method' => $method,
             'status_code' => $statusCode,
             'content_type' => $contentType,
-            'response_body' => $this->formatter->format($contentType, $responseBody),
+            'response_body' => $responseBody,
             'is_active' => $isActive,
         ]);
     }

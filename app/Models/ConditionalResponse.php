@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ConditionOperator;
 use App\Enums\ConditionSource;
+use App\Models\Concerns\FormatsResponseBody;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ConditionalResponse extends Model
 {
-    use HasFactory, HasUuids;
+    use FormatsResponseBody, HasFactory, HasUuids;
 
     protected $fillable = [
         'endpoint_id',

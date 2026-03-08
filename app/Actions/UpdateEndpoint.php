@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace App\Actions;
 
 use App\Models\Endpoint;
-use App\Services\ResponseBodyFormatter;
 
 class UpdateEndpoint
 {
-    public function __construct(private ResponseBodyFormatter $formatter) {}
-
     public function handle(
         Endpoint $endpoint,
         string $name,
@@ -28,7 +25,7 @@ class UpdateEndpoint
             'method' => $method,
             'status_code' => $statusCode,
             'content_type' => $contentType,
-            'response_body' => $this->formatter->format($contentType, $responseBody),
+            'response_body' => $responseBody,
         ]);
     }
 }
