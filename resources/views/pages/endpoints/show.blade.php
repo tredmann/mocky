@@ -69,23 +69,13 @@ new #[Title('Endpoint')] class extends Component {
 
 <div class="w-full space-y-6" x-on:open-curl-modal.window="$flux.modal('curl').show()">
 
-    {{-- Breadcrumbs --}}
-    <flux:breadcrumbs>
-        <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item :href="route('collections.show', $endpoint->collection)" wire:navigate>{{ $endpoint->collection->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $endpoint->name }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
-    {{-- Header --}}
+    {{-- Breadcrumbs + Actions --}}
     <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <flux:button href="{{ route('collections.show', $endpoint->collection) }}" variant="ghost" icon="arrow-left" size="sm" />
-            <flux:heading size="xl">{{ $endpoint->name }}</flux:heading>
-            <flux:switch
-                wire:click="toggleActive"
-                :checked="$endpoint->is_active"
-            />
-        </div>
+        <flux:breadcrumbs>
+            <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item :href="route('collections.show', $endpoint->collection)" wire:navigate>{{ $endpoint->collection->name }}</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>{{ $endpoint->name }}</flux:breadcrumbs.item>
+        </flux:breadcrumbs>
         <div class="flex items-center gap-2">
             <flux:button wire:click="export" variant="ghost" icon="arrow-down-tray" />
             <flux:button wire:click="delete" wire:confirm="Delete this endpoint?" variant="ghost" icon="trash" />
@@ -93,6 +83,16 @@ new #[Title('Endpoint')] class extends Component {
                 Edit
             </flux:button>
         </div>
+    </div>
+
+    {{-- Header --}}
+    <div class="flex items-center gap-3">
+        <flux:button href="{{ route('collections.show', $endpoint->collection) }}" variant="ghost" icon="arrow-left" size="sm" />
+        <flux:heading size="xl">{{ $endpoint->name }}</flux:heading>
+        <flux:switch
+            wire:click="toggleActive"
+            :checked="$endpoint->is_active"
+        />
     </div>
 
     {{-- Meta --}}

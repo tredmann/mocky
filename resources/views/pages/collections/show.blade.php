@@ -86,18 +86,12 @@ new #[Title('Collection')] class extends Component {
 
 <div class="w-full space-y-6">
 
-    {{-- Breadcrumbs --}}
-    <flux:breadcrumbs>
-        <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $collection->name }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
-    {{-- Header --}}
+    {{-- Breadcrumbs + Actions --}}
     <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <flux:button href="{{ route('dashboard') }}" variant="ghost" icon="arrow-left" size="sm" />
-            <flux:heading size="xl">{{ $collection->name }}</flux:heading>
-        </div>
+        <flux:breadcrumbs>
+            <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>{{ $collection->name }}</flux:breadcrumbs.item>
+        </flux:breadcrumbs>
         <div class="flex items-center gap-2">
             <flux:button wire:click="export" variant="ghost" icon="arrow-down-tray" />
             <flux:button wire:click="$set('showImport', true)" variant="ghost" icon="arrow-up-tray" />
@@ -107,6 +101,12 @@ new #[Title('Collection')] class extends Component {
                 New Endpoint
             </flux:button>
         </div>
+    </div>
+
+    {{-- Header --}}
+    <div class="flex items-center gap-3">
+        <flux:button href="{{ route('dashboard') }}" variant="ghost" icon="arrow-left" size="sm" />
+        <flux:heading size="xl">{{ $collection->name }}</flux:heading>
     </div>
 
     {{-- Meta --}}

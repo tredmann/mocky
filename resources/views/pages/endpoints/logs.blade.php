@@ -40,22 +40,14 @@ new #[Title('Logs')] class extends Component {
 
 <div class="w-full space-y-6">
 
-    {{-- Breadcrumbs --}}
-    <flux:breadcrumbs>
-        <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item :href="route('collections.show', $endpoint->collection)" wire:navigate>{{ $endpoint->collection->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item :href="route('endpoints.show', [$endpoint->collection, $endpoint])" wire:navigate>{{ $endpoint->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>Logs</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
+    {{-- Breadcrumbs + Actions --}}
     <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost" icon="arrow-left" size="sm" />
-            <div>
-                <flux:heading size="xl">Logs</flux:heading>
-                <flux:subheading>{{ $endpoint->name }}</flux:subheading>
-            </div>
-        </div>
+        <flux:breadcrumbs>
+            <flux:breadcrumbs.item :href="route('dashboard')" wire:navigate>Dashboard</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item :href="route('collections.show', $endpoint->collection)" wire:navigate>{{ $endpoint->collection->name }}</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item :href="route('endpoints.show', [$endpoint->collection, $endpoint])" wire:navigate>{{ $endpoint->name }}</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>Logs</flux:breadcrumbs.item>
+        </flux:breadcrumbs>
         @if ($this->logs->total() > 0)
             <flux:button
                 wire:click="clearLogs"
@@ -67,6 +59,15 @@ new #[Title('Logs')] class extends Component {
                 Clear Logs
             </flux:button>
         @endif
+    </div>
+
+    {{-- Header --}}
+    <div class="flex items-center gap-3">
+        <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost" icon="arrow-left" size="sm" />
+        <div>
+            <flux:heading size="xl">Logs</flux:heading>
+            <flux:subheading>{{ $endpoint->name }}</flux:subheading>
+        </div>
     </div>
 
     @if ($this->logs->isEmpty())
