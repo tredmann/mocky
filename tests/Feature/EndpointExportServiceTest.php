@@ -138,7 +138,7 @@ test('exported json can be reimported', function () {
 
     $imported = app(App\Services\EndpointImportService::class)->import(
         $original->user,
-        $data,
+        App\Data\EndpointData::fromArray($data),
         $original->collection,
     );
 

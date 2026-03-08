@@ -1,5 +1,6 @@
 <?php
 
+use App\Data\EndpointData;
 use App\Models\EndpointCollection;
 use App\Models\User;
 use App\Services\EndpointImportService;
@@ -35,11 +36,16 @@ function baseData(array $overrides = []): array
     ], $overrides);
 }
 
+function endpointData(array $overrides = []): EndpointData
+{
+    return EndpointData::fromArray(baseData($overrides));
+}
+
 test('imports an endpoint for the given user', function () {
     $user = user();
     $col = collection($user);
 
-    $endpoint = service()->import($user, baseData(), $col);
+    $endpoint = service()->import($user, endpointData(), $col);
 
     expect($endpoint->user_id)->toBe($user->id)
         ->and($endpoint->collection_id)->toBe($col->id)
@@ -55,7 +61,7 @@ test('uses slug from data when it does not exist yet', function () {
     $user = user();
     $col = collection($user);
 
-    $endpoint = service()->import($user, baseData(['slug' => 'my-custom-slug']), $col);
+    $endpoint = service()->import($user, endpointData(['slug' => 'my-custom-slug']), $col);
 
     expect($endpoint->slug)->toBe('my-custom-slug');
 });
@@ -64,8 +70,8 @@ test('generates a new slug when the slug already exists in the collection', func
     $user = user();
     $col = collection($user);
 
-    $existing = service()->import($user, baseData(['slug' => 'taken-slug']), $col);
-    $imported = service()->import($user, baseData(['slug' => 'taken-slug']), $col);
+    $existing = service()->import($user, endpointData(['slug' => 'taken-slug']), $col);
+    $imported = service()->import($user, endpointData(['slug' => 'taken-slug']), $col);
 
     expect($imported->slug)->not->toBe($existing->slug);
 });
@@ -74,7 +80,7 @@ test('generates a new slug when no slug is provided', function () {
     $user = user();
     $col = collection($user);
 
-    $endpoint = service()->import($user, baseData(['slug' => null]), $col);
+    $endpoint = service()->import($user, endpointData(['slug' => null]), $col);
 
     expect($endpoint->slug)->not->toBeEmpty();
 });
@@ -85,7 +91,7 @@ test('defaults is_active to true when not provided', function () {
     $data = baseData();
     unset($data['is_active']);
 
-    $endpoint = service()->import($user, $data, $col);
+    $endpoint = service()->import($user, EndpointData::fromArray($data), $col);
 
     expect($endpoint->is_active)->toBeTrue();
 });
@@ -94,7 +100,7 @@ test('imports without conditional responses', function () {
     $user = user();
     $col = collection($user);
 
-    $endpoint = service()->import($user, baseData(['conditional_responses' => []]), $col);
+    $endpoint = service()->import($user, endpointData(['conditional_responses' => []]), $col);
 
     expect($endpoint->conditionalResponses()->count())->toBe(0);
 });
@@ -102,7 +108,8 @@ test('imports without conditional responses', function () {
 test('imports conditional responses', function () {
     $user = user();
     $col = collection($user);
-    $data = baseData([
+
+    $endpoint = service()->import($user, endpointData([
         'conditional_responses' => [
             [
                 'condition_source' => 'body',
@@ -115,9 +122,7 @@ test('imports conditional responses', function () {
                 'priority' => 0,
             ],
         ],
-    ]);
-
-    $endpoint = service()->import($user, $data, $col);
+    ]), $col);
 
     expect($endpoint->conditionalResponses()->count())->toBe(1);
 
@@ -135,7 +140,8 @@ test('imports conditional responses', function () {
 test('imports multiple conditional responses', function () {
     $user = user();
     $col = collection($user);
-    $data = baseData([
+
+    $endpoint = service()->import($user, endpointData([
         'conditional_responses' => [
             [
                 'condition_source' => 'body', 'condition_field' => 'id',
@@ -150,9 +156,7 @@ test('imports multiple conditional responses', function () {
                 'response_body' => '{"status":"active"}', 'priority' => 1,
             ],
         ],
-    ]);
-
-    $endpoint = service()->import($user, $data, $col);
+    ]), $col);
 
     expect($endpoint->conditionalResponses()->count())->toBe(2);
 });
@@ -161,7 +165,7 @@ test('returns the created endpoint', function () {
     $user = user();
     $col = collection($user);
 
-    $endpoint = service()->import($user, baseData(), $col);
+    $endpoint = service()->import($user, endpointData(), $col);
 
     expect($endpoint)->toBeInstanceOf(App\Models\Endpoint::class)
         ->and($endpoint->exists)->toBeTrue();

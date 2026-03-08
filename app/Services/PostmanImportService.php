@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Data\CollectionData;
+use App\Data\ConditionalResponseData;
+use App\Data\EndpointData;
 use App\Models\EndpointCollection;
 use App\Models\User;
 
@@ -30,23 +33,25 @@ class PostmanImportService
     {
         $info = $postmanData['info'] ?? [];
 
-        $collectionData = [
-            'name' => $info['name'] ?? 'Imported Postman Collection',
-            'description' => $info['description'] ?? null,
-            'endpoints' => [],
-        ];
+        /** @var list<EndpointData> $endpoints */
+        $endpoints = [];
+        $this->processItems($postmanData['item'] ?? [], $endpoints);
 
-        $items = $postmanData['item'] ?? [];
-        $this->processItems($items, $collectionData['endpoints']);
+        $collectionData = new CollectionData(
+            name: $info['name'] ?? 'Imported Postman Collection',
+            description: $info['description'] ?? null,
+            slug: null,
+            endpoints: $endpoints,
+        );
 
         return $this->collectionImportService->import($user, $collectionData);
     }
 
     /**
      * @param  list<array<string, mixed>>  $items
-     * @param  list<array<string, mixed>>  $endpoints
+     * @param  list<EndpointData>  $endpoints
      *
-     * @param-out list<array<string, mixed>>  $endpoints
+     * @param-out list<EndpointData>  $endpoints
      */
     private function processItems(array $items, array &$endpoints, string $prefix = ''): void
     {
@@ -97,11 +102,8 @@ class PostmanImportService
         }
     }
 
-    /**
-     * @param  list<array<string, mixed>>  $group
-     * @return array<string, mixed>
-     */
-    private function buildGroupEndpoint(array $group): array
+    /** @param list<array<string, mixed>> $group */
+    private function buildGroupEndpoint(array $group): EndpointData
     {
         [$baseItem, $variantItems] = $this->pathResolver->separateBaseAndVariants($group);
 
@@ -115,19 +117,13 @@ class PostmanImportService
                 $rawItem['base_slug'],
                 $rawItem['prefix'],
             ),
-            count($endpoint['conditional_responses']),
+            count($endpoint->conditionalResponses),
         );
 
-        $endpoint['conditional_responses'] = array_merge(
-            $endpoint['conditional_responses'],
-            $pathConditionals,
-        );
-
-        return $endpoint;
+        return $endpoint->withExtraConditionals($pathConditionals);
     }
 
-    /** @return array<string, mixed> */
-    private function buildEndpointData(array $item, string $slug, string $prefix): array
+    private function buildEndpointData(array $item, string $slug, string $prefix): EndpointData
     {
         $request = $item['request'];
         $name = $item['name'] ?? 'Unnamed request';
@@ -146,7 +142,7 @@ class PostmanImportService
         if (count($responses) > 0) {
             $defaultSet = false;
 
-            foreach ($responses as $index => $response) {
+            foreach ($responses as $response) {
                 $respCode = $response['code'] ?? 200;
                 $respContentType = $this->extractContentType($response);
                 $respBody = $response['body'] ?? null;
@@ -157,16 +153,16 @@ class PostmanImportService
                     $responseBody = $respBody;
                     $defaultSet = true;
                 } else {
-                    $conditionalResponses[] = [
-                        'condition_source' => 'header',
-                        'condition_field' => 'X-Mock-Response',
-                        'condition_operator' => 'equals',
-                        'condition_value' => (string) ($response['name'] ?? $respCode),
-                        'status_code' => (int) $respCode,
-                        'content_type' => $respContentType,
-                        'response_body' => $respBody,
-                        'priority' => count($conditionalResponses),
-                    ];
+                    $conditionalResponses[] = new ConditionalResponseData(
+                        conditionSource: 'header',
+                        conditionField: 'X-Mock-Response',
+                        conditionOperator: 'equals',
+                        conditionValue: (string) ($response['name'] ?? $respCode),
+                        statusCode: (int) $respCode,
+                        contentType: $respContentType,
+                        responseBody: $respBody,
+                        priority: count($conditionalResponses),
+                    );
                 }
             }
         }
@@ -175,16 +171,17 @@ class PostmanImportService
             $responseBody = $this->extractBodyFromRequest($request);
         }
 
-        return [
-            'name' => $name,
-            'slug' => $slug,
-            'method' => $method,
-            'status_code' => $statusCode,
-            'content_type' => $contentType,
-            'response_body' => $responseBody,
-            'is_active' => true,
-            'conditional_responses' => $conditionalResponses,
-        ];
+        return new EndpointData(
+            name: $name,
+            slug: $slug,
+            method: $method,
+            statusCode: $statusCode,
+            contentType: $contentType,
+            responseBody: $responseBody,
+            isActive: true,
+            description: null,
+            conditionalResponses: $conditionalResponses,
+        );
     }
 
     private function extractPath(mixed $url): string

@@ -103,7 +103,7 @@ test('exported collection json can be reimported', function () {
     $data = exportedCollectionJson($collection);
 
     $importService = app(App\Services\CollectionImportService::class);
-    $imported = $importService->import($collection->user, $data);
+    $imported = $importService->import($collection->user, App\Data\CollectionData::fromArray($data));
 
     expect($imported->name)->toBe('Original')
         ->and($imported->endpoints()->count())->toBe(2);

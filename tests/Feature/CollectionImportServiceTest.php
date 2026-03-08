@@ -1,5 +1,6 @@
 <?php
 
+use App\Data\CollectionData;
 use App\Models\EndpointCollection;
 use App\Models\User;
 use App\Services\CollectionImportService;
@@ -25,10 +26,15 @@ function collectionBaseData(array $overrides = []): array
     ], $overrides);
 }
 
+function collectionData(array $overrides = []): CollectionData
+{
+    return CollectionData::fromArray(collectionBaseData($overrides));
+}
+
 test('imports a collection for the given user', function () {
     $user = collectionImportUser();
 
-    $collection = collectionImportService()->import($user, collectionBaseData());
+    $collection = collectionImportService()->import($user, collectionData());
 
     expect($collection->user_id)->toBe($user->id)
         ->and($collection->name)->toBe('Test Collection')
@@ -38,14 +44,15 @@ test('imports a collection for the given user', function () {
 test('imports collection without endpoints', function () {
     $user = collectionImportUser();
 
-    $collection = collectionImportService()->import($user, collectionBaseData(['endpoints' => []]));
+    $collection = collectionImportService()->import($user, collectionData(['endpoints' => []]));
 
     expect($collection->endpoints()->count())->toBe(0);
 });
 
 test('imports collection with endpoints', function () {
     $user = collectionImportUser();
-    $data = collectionBaseData([
+
+    $collection = collectionImportService()->import($user, collectionData([
         'endpoints' => [
             [
                 'name' => 'Get user',
@@ -68,16 +75,15 @@ test('imports collection with endpoints', function () {
                 'conditional_responses' => [],
             ],
         ],
-    ]);
-
-    $collection = collectionImportService()->import($user, $data);
+    ]));
 
     expect($collection->endpoints()->count())->toBe(2);
 });
 
 test('imports collection with endpoints that have conditional responses', function () {
     $user = collectionImportUser();
-    $data = collectionBaseData([
+
+    $collection = collectionImportService()->import($user, collectionData([
         'endpoints' => [
             [
                 'name' => 'Get user',
@@ -101,9 +107,8 @@ test('imports collection with endpoints that have conditional responses', functi
                 ],
             ],
         ],
-    ]);
+    ]));
 
-    $collection = collectionImportService()->import($user, $data);
     $endpoint = $collection->endpoints()->first();
 
     expect($endpoint->conditionalResponses()->count())->toBe(1);
@@ -112,7 +117,7 @@ test('imports collection with endpoints that have conditional responses', functi
 test('returns the created collection', function () {
     $user = collectionImportUser();
 
-    $collection = collectionImportService()->import($user, collectionBaseData());
+    $collection = collectionImportService()->import($user, collectionData());
 
     expect($collection)->toBeInstanceOf(EndpointCollection::class)
         ->and($collection->exists)->toBeTrue();
@@ -123,7 +128,7 @@ test('defaults description to null when not provided', function () {
     $data = collectionBaseData();
     unset($data['description']);
 
-    $collection = collectionImportService()->import($user, $data);
+    $collection = collectionImportService()->import($user, CollectionData::fromArray($data));
 
     expect($collection->description)->toBeNull();
 });
@@ -131,8 +136,8 @@ test('defaults description to null when not provided', function () {
 test('generates a unique slug for the imported collection', function () {
     $user = collectionImportUser();
 
-    $first = collectionImportService()->import($user, collectionBaseData());
-    $second = collectionImportService()->import($user, collectionBaseData());
+    $first = collectionImportService()->import($user, collectionData());
+    $second = collectionImportService()->import($user, collectionData());
 
     expect($first->slug)->not->toBe($second->slug);
 });
@@ -140,7 +145,7 @@ test('generates a unique slug for the imported collection', function () {
 test('uses slug from data when it does not already exist', function () {
     $user = collectionImportUser();
 
-    $collection = collectionImportService()->import($user, collectionBaseData(['slug' => 'my-custom-slug']));
+    $collection = collectionImportService()->import($user, collectionData(['slug' => 'my-custom-slug']));
 
     expect($collection->slug)->toBe('my-custom-slug');
 });
@@ -148,8 +153,8 @@ test('uses slug from data when it does not already exist', function () {
 test('generates a new slug when the provided slug is already taken', function () {
     $user = collectionImportUser();
 
-    $first = collectionImportService()->import($user, collectionBaseData(['slug' => 'taken-slug']));
-    $second = collectionImportService()->import($user, collectionBaseData(['slug' => 'taken-slug']));
+    $first = collectionImportService()->import($user, collectionData(['slug' => 'taken-slug']));
+    $second = collectionImportService()->import($user, collectionData(['slug' => 'taken-slug']));
 
     expect($second->slug)->not->toBe('taken-slug')
         ->and($second->slug)->not->toBe($first->slug);

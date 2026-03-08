@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Data\CollectionData;
+use App\Data\ConditionalResponseData;
+use App\Data\EndpointData;
 use App\Models\EndpointCollection;
 use App\Models\User;
 use cebe\openapi\Reader;
@@ -34,12 +37,6 @@ class OpenApiImportService
 
     public function import(User $user, OpenApi $openApi): EndpointCollection
     {
-        $collectionData = [
-            'name' => $openApi->info->title ?? 'Imported API',
-            'description' => $openApi->info->description ?? null,
-            'endpoints' => [],
-        ];
-
         // Collect all (path, method, operation) tuples with their slug info
         $rawItems = [];
         foreach ($openApi->paths as $path => $pathItem) {
@@ -66,18 +63,23 @@ class OpenApiImportService
         // Group by (base_slug, method) so path-variant operations merge into one endpoint
         $groups = $this->pathResolver->groupBySlugAndMethod($rawItems);
 
+        $endpoints = [];
         foreach ($groups as $group) {
-            $collectionData['endpoints'][] = $this->buildGroupEndpoint($group);
+            $endpoints[] = $this->buildGroupEndpoint($group);
         }
+
+        $collectionData = new CollectionData(
+            name: $openApi->info->title ?? 'Imported API',
+            description: $openApi->info->description ?? null,
+            slug: null,
+            endpoints: $endpoints,
+        );
 
         return $this->collectionImportService->import($user, $collectionData);
     }
 
-    /**
-     * @param  list<array<string, mixed>>  $group
-     * @return array<string, mixed>
-     */
-    private function buildGroupEndpoint(array $group): array
+    /** @param list<array<string, mixed>> $group */
+    private function buildGroupEndpoint(array $group): EndpointData
     {
         [$baseItem, $variantItems] = $this->pathResolver->separateBaseAndVariants($group);
 
@@ -97,18 +99,13 @@ class OpenApiImportService
                 $rawItem['operation'],
                 $rawItem['base_slug'],
             ),
-            count($endpoint['conditional_responses']),
+            count($endpoint->conditionalResponses),
         );
 
-        $endpoint['conditional_responses'] = array_merge(
-            $endpoint['conditional_responses'],
-            $pathConditionals,
-        );
-
-        return $endpoint;
+        return $endpoint->withExtraConditionals($pathConditionals);
     }
 
-    private function buildEndpointData(string $path, string $method, Operation $operation, string $slug): array
+    private function buildEndpointData(string $path, string $method, Operation $operation, string $slug): EndpointData
     {
         $name = $operation->operationId
             ?? $operation->summary
@@ -138,32 +135,34 @@ class OpenApiImportService
                     $defaultSet = true;
                 } else {
                     $numericCode = is_numeric($code) ? (int) $code : 200;
-                    $conditionalResponses[] = [
-                        'condition_source' => 'header',
-                        'condition_field' => 'X-Mock-Response',
-                        'condition_operator' => 'equals',
-                        'condition_value' => $code,
-                        'status_code' => $numericCode,
-                        'content_type' => $resolved['content_type'],
-                        'response_body' => $resolved['body'],
-                        'priority' => count($conditionalResponses),
-                    ];
+                    $conditionalResponses[] = new ConditionalResponseData(
+                        conditionSource: 'header',
+                        conditionField: 'X-Mock-Response',
+                        conditionOperator: 'equals',
+                        conditionValue: $code,
+                        statusCode: $numericCode,
+                        contentType: $resolved['content_type'],
+                        responseBody: $resolved['body'],
+                        priority: count($conditionalResponses),
+                    );
                 }
             }
         }
 
-        return [
-            'name' => $name,
-            'slug' => $slug,
-            'method' => $method,
-            'status_code' => $statusCode,
-            'content_type' => $contentType,
-            'response_body' => $responseBody,
-            'is_active' => true,
-            'conditional_responses' => $conditionalResponses,
-        ];
+        return new EndpointData(
+            name: $name,
+            slug: $slug,
+            method: $method,
+            statusCode: $statusCode,
+            contentType: $contentType,
+            responseBody: $responseBody,
+            isActive: true,
+            description: null,
+            conditionalResponses: $conditionalResponses,
+        );
     }
 
+    /** @return array{content_type: string, body: string|null} */
     private function resolveResponseData(Response $response): array
     {
         $contentType = 'application/json';

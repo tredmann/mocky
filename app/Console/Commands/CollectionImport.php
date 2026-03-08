@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Concerns\ResolvesImportFile;
+use App\Data\CollectionData;
 use App\Services\CollectionImportService;
 use Illuminate\Console\Command;
 
@@ -39,7 +40,7 @@ class CollectionImport extends Command
             return self::FAILURE;
         }
 
-        $collection = $importService->import($user, $data);
+        $collection = $importService->import($user, CollectionData::fromArray($data));
 
         $endpointCount = $collection->endpoints()->count();
         $this->info("Imported collection [{$collection->name}] with {$endpointCount} endpoint(s) for user [{$user->email}].");

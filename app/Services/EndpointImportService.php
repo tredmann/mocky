@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Actions\CreateEndpoint;
+use App\Data\EndpointData;
 use App\Models\Endpoint;
 use App\Models\EndpointCollection;
 use App\Models\User;
@@ -12,33 +15,33 @@ class EndpointImportService
 {
     public function __construct(private CreateEndpoint $createEndpoint) {}
 
-    public function import(User $user, array $data, EndpointCollection $collection): Endpoint
+    public function import(User $user, EndpointData $data, EndpointCollection $collection): Endpoint
     {
-        $slug = $data['slug'] ?? Str::slug($data['name']);
+        $slug = $data->slug ?: Str::slug($data->name);
 
         $endpoint = $this->createEndpoint->handle(
             $user,
             $collection,
-            $data['name'],
+            $data->name,
             $slug,
-            $data['method'],
-            $data['status_code'],
-            $data['content_type'],
-            $data['description'] ?? null,
-            $data['response_body'] ?? null,
-            $data['is_active'] ?? true,
+            $data->method,
+            $data->statusCode,
+            $data->contentType,
+            $data->description,
+            $data->responseBody,
+            $data->isActive,
         );
 
-        foreach ($data['conditional_responses'] ?? [] as $cr) {
+        foreach ($data->conditionalResponses as $cr) {
             $endpoint->conditionalResponses()->create([
-                'condition_source' => $cr['condition_source'],
-                'condition_field' => $cr['condition_field'],
-                'condition_operator' => $cr['condition_operator'],
-                'condition_value' => $cr['condition_value'],
-                'status_code' => $cr['status_code'],
-                'content_type' => $cr['content_type'],
-                'response_body' => $cr['response_body'] ?? null,
-                'priority' => $cr['priority'] ?? 0,
+                'condition_source' => $cr->conditionSource,
+                'condition_field' => $cr->conditionField,
+                'condition_operator' => $cr->conditionOperator,
+                'condition_value' => $cr->conditionValue,
+                'status_code' => $cr->statusCode,
+                'content_type' => $cr->contentType,
+                'response_body' => $cr->responseBody,
+                'priority' => $cr->priority,
             ]);
         }
 

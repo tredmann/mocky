@@ -131,6 +131,16 @@ test('promotes first item when all have path segments', function () {
 
 // --- buildPathConditionals ---
 
+function variantEndpointData(?string $responseBody = null): App\Data\EndpointData
+{
+    return App\Data\EndpointData::fromArray([
+        'name' => 'test', 'slug' => 'test', 'method' => 'GET',
+        'status_code' => 200, 'content_type' => 'application/json',
+        'response_body' => $responseBody, 'is_active' => true,
+        'conditional_responses' => [],
+    ]);
+}
+
 test('builds path conditional for numeric variant', function () {
     $variants = [
         ['path_segment' => '1', 'data' => 'v1'],
@@ -138,13 +148,13 @@ test('builds path conditional for numeric variant', function () {
 
     $conditionals = resolver()->buildPathConditionals(
         $variants,
-        fn ($item) => ['status_code' => 200, 'content_type' => 'application/json', 'response_body' => '{"id": 1}'],
+        fn ($item) => variantEndpointData('{"id": 1}'),
     );
 
     expect($conditionals)->toHaveCount(1)
-        ->and($conditionals[0]['condition_operator'])->toBe('equals')
-        ->and($conditionals[0]['condition_value'])->toBe('1')
-        ->and($conditionals[0]['priority'])->toBe(0);
+        ->and($conditionals[0]->conditionOperator)->toBe('equals')
+        ->and($conditionals[0]->conditionValue)->toBe('1')
+        ->and($conditionals[0]->priority)->toBe(0);
 });
 
 test('builds path conditional for template variant', function () {
@@ -154,12 +164,12 @@ test('builds path conditional for template variant', function () {
 
     $conditionals = resolver()->buildPathConditionals(
         $variants,
-        fn ($item) => ['status_code' => 200, 'content_type' => 'application/json', 'response_body' => null],
+        fn ($item) => variantEndpointData(),
     );
 
     expect($conditionals)->toHaveCount(1)
-        ->and($conditionals[0]['condition_operator'])->toBe('not_equals')
-        ->and($conditionals[0]['condition_value'])->toBe('');
+        ->and($conditionals[0]->conditionOperator)->toBe('not_equals')
+        ->and($conditionals[0]->conditionValue)->toBe('');
 });
 
 test('respects start priority for path conditionals', function () {
@@ -170,10 +180,10 @@ test('respects start priority for path conditionals', function () {
 
     $conditionals = resolver()->buildPathConditionals(
         $variants,
-        fn ($item) => ['status_code' => 200, 'content_type' => 'application/json', 'response_body' => null],
+        fn ($item) => variantEndpointData(),
         startPriority: 3,
     );
 
-    expect($conditionals[0]['priority'])->toBe(3)
-        ->and($conditionals[1]['priority'])->toBe(4);
+    expect($conditionals[0]->priority)->toBe(3)
+        ->and($conditionals[1]->priority)->toBe(4);
 });

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Data\ConditionalResponseData;
+use App\Data\EndpointData;
 use Illuminate\Support\Str;
 
 class ImportPathResolver
@@ -132,13 +134,13 @@ class ImportPathResolver
     /**
      * Build path conditional response entries from variant items.
      *
-     * The $buildEndpointData callable receives a raw item and must return an array
-     * with at least 'status_code', 'content_type', and 'response_body' keys.
+     * The $buildEndpointData callable receives a raw item and must return an EndpointData
+     * whose status_code, content_type, and response_body are used for the conditional.
      *
      * @param  list<array<string, mixed>>  $variantItems
-     * @param  callable(array<string, mixed>): array<string, mixed>  $buildEndpointData
+     * @param  callable(array<string, mixed>): EndpointData  $buildEndpointData
      * @param  int  $startPriority  Priority counter start value
-     * @return list<array<string, mixed>>
+     * @return list<ConditionalResponseData>
      */
     public function buildPathConditionals(array $variantItems, callable $buildEndpointData, int $startPriority = 0): array
     {
@@ -149,16 +151,16 @@ class ImportPathResolver
             $variantData = $buildEndpointData($rawItem);
             $isTemplate = $rawItem['path_segment'] === '__any__';
 
-            $conditionals[] = [
-                'condition_source' => 'path',
-                'condition_field' => '0',
-                'condition_operator' => $isTemplate ? 'not_equals' : 'equals',
-                'condition_value' => $isTemplate ? '' : $rawItem['path_segment'],
-                'status_code' => $variantData['status_code'],
-                'content_type' => $variantData['content_type'],
-                'response_body' => $variantData['response_body'],
-                'priority' => $priority++,
-            ];
+            $conditionals[] = new ConditionalResponseData(
+                conditionSource: 'path',
+                conditionField: '0',
+                conditionOperator: $isTemplate ? 'not_equals' : 'equals',
+                conditionValue: $isTemplate ? '' : (string) $rawItem['path_segment'],
+                statusCode: $variantData->statusCode,
+                contentType: $variantData->contentType,
+                responseBody: $variantData->responseBody,
+                priority: $priority++,
+            );
         }
 
         return $conditionals;

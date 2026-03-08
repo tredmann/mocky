@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Concerns\ResolvesImportFile;
+use App\Data\EndpointData;
 use App\Models\EndpointCollection;
 use App\Services\EndpointImportService;
 use Illuminate\Console\Command;
@@ -50,7 +51,7 @@ class EndpointImport extends Command
             return self::FAILURE;
         }
 
-        $endpoint = $importService->import($user, $data, $collection);
+        $endpoint = $importService->import($user, EndpointData::fromArray($data), $collection);
 
         $this->info("Imported [{$endpoint->name}] with slug [{$endpoint->slug}] into collection [{$collection->slug}] for user [{$user->email}].");
 

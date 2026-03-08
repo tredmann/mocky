@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Actions\CreateEndpointCollection;
+use App\Data\CollectionData;
 use App\Models\EndpointCollection;
 use App\Models\User;
 
@@ -13,16 +16,16 @@ class CollectionImportService
         private CreateEndpointCollection $createCollection,
     ) {}
 
-    public function import(User $user, array $data): EndpointCollection
+    public function import(User $user, CollectionData $data): EndpointCollection
     {
         $collection = $this->createCollection->handle(
             $user,
-            $data['name'],
-            $data['description'] ?? null,
-            $data['slug'] ?? null,
+            $data->name,
+            $data->description,
+            $data->slug,
         );
 
-        foreach ($data['endpoints'] ?? [] as $endpointData) {
+        foreach ($data->endpoints as $endpointData) {
             $this->endpointImportService->import($user, $endpointData, $collection);
         }
 
