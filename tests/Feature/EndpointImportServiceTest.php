@@ -123,9 +123,9 @@ test('imports conditional responses', function () {
 
     $cr = $endpoint->conditionalResponses()->first();
 
-    expect($cr->condition_source)->toBe('body')
+    expect($cr->condition_source)->toBe(App\Enums\ConditionSource::Body)
         ->and($cr->condition_field)->toBe('id')
-        ->and($cr->condition_operator)->toBe('equals')
+        ->and($cr->condition_operator)->toBe(App\Enums\ConditionOperator::Equals)
         ->and($cr->condition_value)->toBe('1')
         ->and($cr->status_code)->toBe(404)
         ->and($cr->response_body)->toBe('{"message":"not found"}')

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ConditionOperator;
+use App\Enums\ConditionSource;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +27,8 @@ class ConditionalResponse extends Model
     ];
 
     protected $casts = [
+        'condition_source' => ConditionSource::class,
+        'condition_operator' => ConditionOperator::class,
         'status_code' => 'integer',
         'priority' => 'integer',
     ];
@@ -38,11 +42,10 @@ class ConditionalResponse extends Model
     public function matches(Request $request, array $pathSegments = []): bool
     {
         $actual = match ($this->condition_source) {
-            'body' => data_get($request->json()->all(), $this->condition_field),
-            'query' => $request->query($this->condition_field),
-            'header' => $request->header($this->condition_field),
-            'path' => $pathSegments[(int) $this->condition_field] ?? null,
-            default => null,
+            ConditionSource::Body => data_get($request->json()->all(), $this->condition_field),
+            ConditionSource::Query => $request->query($this->condition_field),
+            ConditionSource::Header => $request->header($this->condition_field),
+            ConditionSource::Path => $pathSegments[(int) $this->condition_field] ?? null,
         };
 
         if ($actual === null) {
@@ -52,14 +55,10 @@ class ConditionalResponse extends Model
         $actual = (string) $actual;
         $expected = $this->condition_value;
 
-        /** @var string $operator */
-        $operator = $this->condition_operator;
-
-        return match ($operator) {
-            'equals' => $actual === $expected,
-            'not_equals' => $actual !== $expected,
-            'contains' => str_contains($actual, $expected),
-            default => false,
+        return match ($this->condition_operator) {
+            ConditionOperator::Equals => $actual === $expected,
+            ConditionOperator::NotEquals => $actual !== $expected,
+            ConditionOperator::Contains => str_contains($actual, $expected),
         };
     }
 }

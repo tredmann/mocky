@@ -7,9 +7,12 @@ namespace App\Actions;
 use App\Models\Endpoint;
 use App\Models\EndpointCollection;
 use App\Models\User;
+use App\Services\ResponseBodyFormatter;
 
 class CreateEndpoint
 {
+    public function __construct(private ResponseBodyFormatter $formatter) {}
+
     public function handle(
         User $user,
         EndpointCollection $collection,
@@ -32,25 +35,9 @@ class CreateEndpoint
             'method' => $method,
             'status_code' => $statusCode,
             'content_type' => $contentType,
-            'response_body' => $this->formatBody($contentType, $responseBody),
+            'response_body' => $this->formatter->format($contentType, $responseBody),
             'is_active' => $isActive,
         ]);
-    }
-
-    private function formatBody(string $contentType, ?string $body): ?string
-    {
-        if ($body === null || $body === '') {
-            return $body;
-        }
-
-        if (str_contains($contentType, 'json')) {
-            $decoded = json_decode($body);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            }
-        }
-
-        return $body;
     }
 
     private function uniqueSlug(EndpointCollection $collection, string $slug, string $method): string

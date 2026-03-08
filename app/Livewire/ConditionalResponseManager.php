@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Actions\AddConditionalResponse;
+use App\Enums\ConditionOperator;
+use App\Enums\ConditionSource;
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
 use App\Rules\ValidResponseSyntax;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Reactive;
@@ -42,13 +45,13 @@ class ConditionalResponseManager extends Component
 
     public function mount(): void
     {
-        $this->condition_source = $this->method === 'GET' ? 'query' : 'body';
+        $this->condition_source = $this->method === 'GET' ? ConditionSource::Query->value : ConditionSource::Body->value;
     }
 
     public function updatedMethod(string $value): void
     {
         if (! $this->showForm) {
-            $this->condition_source = $value === 'GET' ? 'query' : 'body';
+            $this->condition_source = $value === 'GET' ? ConditionSource::Query->value : ConditionSource::Body->value;
         }
     }
 
@@ -61,9 +64,9 @@ class ConditionalResponseManager extends Component
     public function add(AddConditionalResponse $action): void
     {
         $this->validate([
-            'condition_source' => ['required', 'in:body,query,header,path'],
+            'condition_source' => ['required', Rule::enum(ConditionSource::class)],
             'condition_field' => ['required', 'string', 'max:255'],
-            'condition_operator' => ['required', 'in:equals,not_equals,contains'],
+            'condition_operator' => ['required', Rule::enum(ConditionOperator::class)],
             'condition_value' => ['required', 'string', 'max:255'],
             'status_code' => ['required', 'integer', 'min:100', 'max:599'],
             'content_type' => ['required', 'string', 'max:255'],
@@ -97,9 +100,9 @@ class ConditionalResponseManager extends Component
     public function resetForm(): void
     {
         $this->showForm = false;
-        $this->condition_source = $this->method === 'GET' ? 'query' : 'body';
+        $this->condition_source = $this->method === 'GET' ? ConditionSource::Query->value : ConditionSource::Body->value;
         $this->condition_field = '';
-        $this->condition_operator = 'equals';
+        $this->condition_operator = ConditionOperator::Equals->value;
         $this->condition_value = '';
         $this->status_code = 200;
         $this->content_type = 'application/json';

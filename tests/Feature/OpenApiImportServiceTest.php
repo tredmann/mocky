@@ -117,7 +117,7 @@ test('show pet by id is a path conditional on list pets endpoint', function () {
 
     expect($pathCr)->not->toBeNull()
         ->and($pathCr->condition_field)->toBe('0')
-        ->and($pathCr->condition_operator)->toBe('not_equals')
+        ->and($pathCr->condition_operator)->toBe(App\Enums\ConditionOperator::NotEquals)
         ->and($pathCr->condition_value)->toBe('')
         ->and($pathCr->status_code)->toBe(200);
 

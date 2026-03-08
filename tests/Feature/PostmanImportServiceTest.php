@@ -97,7 +97,7 @@ test('creates conditional responses for additional saved responses', function ()
     expect($conditionals)->toHaveCount(1);
 
     $cr = $conditionals->first();
-    expect($cr->condition_source)->toBe('header')
+    expect($cr->condition_source)->toBe(App\Enums\ConditionSource::Header)
         ->and($cr->condition_field)->toBe('X-Mock-Response')
         ->and($cr->condition_value)->toBe('Invalid Credentials')
         ->and($cr->status_code)->toBe(401);
@@ -187,7 +187,7 @@ test('get user is a path conditional on the list users endpoint', function () {
 
     expect($conditional)->not->toBeNull()
         ->and($conditional->condition_field)->toBe('0')
-        ->and($conditional->condition_operator)->toBe('equals')
+        ->and($conditional->condition_operator)->toBe(App\Enums\ConditionOperator::Equals)
         ->and($conditional->condition_value)->toBe('1')
         ->and($conditional->status_code)->toBe(200);
 

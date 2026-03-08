@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\HttpMethod;
 use App\Rules\ValidResponseSyntax;
 use Illuminate\Validation\Rule;
 
@@ -27,7 +28,7 @@ trait EndpointValidationRules
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'regex:'.self::SLUG_REGEX, $slugUnique],
             'description' => ['nullable', 'string', 'max:1000'],
-            'method' => ['required', 'in:GET,POST,PUT,PATCH,DELETE'],
+            'method' => ['required', Rule::enum(HttpMethod::class)],
             'status_code' => ['required', 'integer', 'min:100', 'max:599'],
             'content_type' => ['required', 'string', 'max:255'],
             'response_body' => ['nullable', 'string', new ValidResponseSyntax],

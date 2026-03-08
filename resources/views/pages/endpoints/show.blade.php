@@ -157,9 +157,9 @@ new #[Title('Endpoint')] class extends Component {
                     <div class="flex items-start justify-between">
                         <div class="space-y-1">
                             <div class="flex items-center gap-2 text-sm">
-                                <flux:badge size="sm" color="blue">{{ strtoupper($cr->condition_source) }}</flux:badge>
+                                <flux:badge size="sm" color="blue">{{ strtoupper($cr->condition_source->value) }}</flux:badge>
                                 <code class="text-xs">{{ $cr->condition_field }}</code>
-                                <span class="text-neutral-400">{{ str_replace('_', ' ', $cr->condition_operator) }}</span>
+                                <span class="text-neutral-400">{{ str_replace('_', ' ', $cr->condition_operator->value) }}</span>
                                 <code class="text-xs">{{ $cr->condition_value }}</code>
                             </div>
                             <div class="flex items-center gap-2 text-sm text-neutral-500">

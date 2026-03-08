@@ -22,9 +22,9 @@ class EndpointExportService
             'conditional_responses' => $endpoint->conditionalResponses()
                 ->get()
                 ->map(fn ($cr) => [
-                    'condition_source' => $cr->condition_source,
+                    'condition_source' => $cr->condition_source->value,
                     'condition_field' => $cr->condition_field,
-                    'condition_operator' => $cr->condition_operator,
+                    'condition_operator' => $cr->condition_operator->value,
                     'condition_value' => $cr->condition_value,
                     'status_code' => $cr->status_code,
                     'content_type' => $cr->content_type,

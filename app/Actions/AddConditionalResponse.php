@@ -6,9 +6,12 @@ namespace App\Actions;
 
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
+use App\Services\ResponseBodyFormatter;
 
 class AddConditionalResponse
 {
+    public function __construct(private ResponseBodyFormatter $formatter) {}
+
     public function handle(
         Endpoint $endpoint,
         string $conditionSource,
@@ -19,7 +22,7 @@ class AddConditionalResponse
         string $contentType,
         string $responseBody = '',
     ): ConditionalResponse {
-        $body = $this->formatBody($contentType, $responseBody);
+        $body = $this->formatter->format($contentType, $responseBody) ?? '';
 
         $priority = $endpoint->conditionalResponses()->max('priority') + 1;
 
@@ -33,21 +36,5 @@ class AddConditionalResponse
             'response_body' => $body,
             'priority' => $priority,
         ]);
-    }
-
-    private function formatBody(string $contentType, string $body): string
-    {
-        if ($body === '') {
-            return $body;
-        }
-
-        if (str_contains($contentType, 'json')) {
-            $decoded = json_decode($body);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            }
-        }
-
-        return $body;
     }
 }

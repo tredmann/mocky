@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Actions;
 
 use App\Models\Endpoint;
+use App\Services\ResponseBodyFormatter;
 
 class UpdateEndpoint
 {
+    public function __construct(private ResponseBodyFormatter $formatter) {}
+
     public function handle(
         Endpoint $endpoint,
         string $name,
@@ -25,23 +28,7 @@ class UpdateEndpoint
             'method' => $method,
             'status_code' => $statusCode,
             'content_type' => $contentType,
-            'response_body' => $this->formatBody($contentType, $responseBody),
+            'response_body' => $this->formatter->format($contentType, $responseBody),
         ]);
-    }
-
-    private function formatBody(string $contentType, ?string $body): ?string
-    {
-        if ($body === null || $body === '') {
-            return $body;
-        }
-
-        if (str_contains($contentType, 'json')) {
-            $decoded = json_decode($body);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            }
-        }
-
-        return $body;
     }
 }
