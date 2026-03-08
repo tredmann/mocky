@@ -133,7 +133,7 @@ test('imports conditional responses', function () {
         ->and($cr->condition_operator)->toBe(App\Enums\ConditionOperator::Equals)
         ->and($cr->condition_value)->toBe('1')
         ->and($cr->status_code)->toBe(404)
-        ->and($cr->response_body)->toBe('{"message":"not found"}')
+        ->and(json_decode($cr->response_body, true))->toBe(['message' => 'not found'])
         ->and($cr->priority)->toBe(0);
 });
 

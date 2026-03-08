@@ -45,7 +45,7 @@ test('output file contains endpoint data', function () {
         ->and($data['method'])->toBe('GET')
         ->and($data['status_code'])->toBe(200)
         ->and($data['content_type'])->toBe('application/json')
-        ->and($data['response_body'])->toBe('{"id":1}')
+        ->and(json_decode($data['response_body'], true))->toBe(['id' => 1])
         ->and($data['is_active'])->toBeTrue();
 
     File::delete($path);

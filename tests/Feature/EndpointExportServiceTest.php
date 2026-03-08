@@ -65,7 +65,7 @@ test('exports endpoint fields', function () {
         ->and($data['method'])->toBe('GET')
         ->and($data['status_code'])->toBe(200)
         ->and($data['content_type'])->toBe('application/json')
-        ->and($data['response_body'])->toBe('{"message":"ok"}')
+        ->and(json_decode($data['response_body'], true))->toBe(['message' => 'ok'])
         ->and($data['is_active'])->toBeTrue()
         ->and($data)->not->toHaveKey('collection_slug');
 });
@@ -104,7 +104,7 @@ test('exports conditional responses', function () {
         ->and($cr['condition_operator'])->toBe('equals')
         ->and($cr['condition_value'])->toBe('1')
         ->and($cr['status_code'])->toBe(404)
-        ->and($cr['response_body'])->toBe('{"message":"not found"}')
+        ->and(json_decode($cr['response_body'], true))->toBe(['message' => 'not found'])
         ->and($cr['priority'])->toBe(0);
 });
 
