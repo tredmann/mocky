@@ -67,6 +67,12 @@ class User extends Authenticatable
         return $this->hasMany(Endpoint::class);
     }
 
+    /** @return HasMany<FileInboxLog, $this> */
+    public function fileInboxLogs(): HasMany
+    {
+        return $this->hasMany(FileInboxLog::class);
+    }
+
     public function initials(): string
     {
         return Str::of($this->name)

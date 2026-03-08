@@ -81,8 +81,33 @@ Both OpenAPI and Postman importers share the same path-splitting strategy:
    - **Concrete value** (e.g. `1`) → `path[0] equals "1"`
    - **Template param** (e.g. `{id}`, `:id`) → `path[0] not_equals ""`
 
+### Inbox auto-import
+
+A scheduled job (`inbox:process`) runs every minute, scanning a configurable filesystem disk for collection JSON files to import automatically.
+
+**Configuration** (`config/inbox.php`, all overridable via `.env`):
+
+| Env var | Default | Description |
+|---------|---------|-------------|
+| `INBOX_DISK` | `local` | Laravel filesystem disk name (local, s3, etc.) |
+| `INBOX_PATH` | `inbox` | Directory path on the disk to scan for files |
+| `INBOX_IMPORT_USER` | *(first user)* | Email or UUID of the user to assign imports to |
+
+**How it works:**
+
+1. The job lists all `.json` files in the configured inbox path.
+2. For each file, it computes the MD5 hash of the contents.
+3. If the hash already exists in `file_inbox_logs`, the file is skipped (already processed).
+4. Otherwise it attempts to import via `CollectionImportService` and logs the result as `imported` or `failed`.
+5. Files always remain in the inbox — the database is the sole source of truth for what has been processed.
+
+**Constraints:** Max file size is 5 MB. Files must be valid collection export JSON with a `name` field. The schedule uses `withoutOverlapping()` to prevent concurrent runs.
+
+**UI:** The "Import Log" page (`/inbox`) in the sidebar shows all processed files with status, error details, and timestamp.
+
 ### Artisan commands
 
+- `inbox:process` — processes collection JSON files from the inbox folder (also runs on schedule every minute)
 - `endpoint:export {slug} {--output=}` — exports an endpoint to a JSON file (defaults to `{slug}.json`)
 - `endpoint:import {file} {--user=}` — imports from a JSON file; `--user` accepts email or UUID; defaults to the first user
 - `openapi:import {file} {--user=}` — imports an OpenAPI spec (`.json`, `.yaml`, `.yml`); max 5 MB
@@ -92,7 +117,7 @@ Both OpenAPI and Postman importers share the same path-splitting strategy:
 
 Livewire single-file components live in `resources/views/pages/`. The layout (`layouts::app`) is applied automatically via Livewire's `component_layout` config — **do not wrap page components in `<x-layouts::app>`**.
 
-Page flow: Dashboard → Detail (`endpoints.show`) → Edit (`endpoints.edit`). Logs accessible from the detail page.
+Page flow: Dashboard → Detail (`endpoints.show`) → Edit (`endpoints.edit`). Logs accessible from the detail page. Import Log (`/inbox`) accessible from the sidebar.
 
 ### Code style
 

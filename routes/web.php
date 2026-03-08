@@ -7,6 +7,7 @@ Route::redirect('/', '/login')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
+    Route::livewire('inbox', 'pages::inbox')->name('inbox');
 
     Route::livewire('collections/create', 'pages::collections.create')->name('collections.create');
     Route::livewire('collections/{collection}', 'pages::collections.show')->name('collections.show');

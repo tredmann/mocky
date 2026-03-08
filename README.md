@@ -15,6 +15,7 @@ A configurable mock REST API server. Define endpoints through a web UI, then poi
 - **Export / import** — download and restore entire collections (with all endpoints) or individual endpoints as JSON
 - **OpenAPI import** — import an OpenAPI 3.x spec (`.json`, `.yaml`, `.yml`) as a collection; path-parameter variants are automatically grouped as `path` conditional responses
 - **Postman import** — import a Postman Collection v2.1 JSON; requests sharing the same base path and method are grouped into one endpoint with path-based conditionals
+- **Inbox auto-import** — drop collection JSON files into a watched folder and they are imported automatically on a schedule; works with any Laravel filesystem disk (local, S3, etc.)
 - **cURL helper** — generates a ready-to-run curl command for each response, pre-filled with the condition values
 - Docker-ready with FrankenPHP
 
@@ -112,6 +113,43 @@ Both importers group requests by **base path + HTTP method**, so a typical REST 
 
 Path segments are treated as variables when they are: an OpenAPI template param (`{id}`), a Postman variable (`:id` or `{{id}}`), or a bare numeric value (`1`). Concrete numeric segments (e.g. `/users/1`) produce an `equals "1"` condition; template params produce a `not_equals ""` condition (matches any value).
 
+### Inbox auto-import
+
+Instead of importing through the UI or CLI, you can drop collection JSON files into a watched folder. A scheduled job runs every minute, picks up new files, and imports them automatically.
+
+**Setup:**
+
+Add these to your `.env` (all optional — defaults work out of the box):
+
+```env
+INBOX_DISK=local           # Laravel filesystem disk (local, s3, etc.)
+INBOX_PATH=inbox           # Directory on the disk to scan
+INBOX_IMPORT_USER=         # Email or UUID of the user to own imports (defaults to first user)
+```
+
+Make sure the Laravel scheduler is running:
+
+```bash
+php artisan schedule:work   # development
+# or add to crontab for production:
+# * * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+**How it works:**
+
+1. Place one or more collection `.json` files in the inbox folder (e.g. `storage/app/private/inbox/`)
+2. The `inbox:process` job picks them up, computes the MD5 hash, and checks the database
+3. New files are imported via `CollectionImportService`; already-seen files (by MD5) are skipped
+4. Results are logged to the `file_inbox_logs` table — visible on the **Import Log** page (`/inbox`) in the sidebar
+
+Files always remain in the inbox — the database is the sole source of truth for what has been processed. Max file size is 5 MB.
+
+You can also run the job manually:
+
+```bash
+php artisan inbox:process
+```
+
 ## How it works
 
 Each endpoint gets a unique slug and a configured HTTP method. When a request arrives at `/mock/{slug}`, the controller:
@@ -159,6 +197,13 @@ php artisan openapi:import {file} --user=admin@admin.com
 # Import from a Postman Collection JSON
 php artisan postman:import {file}
 php artisan postman:import {file} --user=admin@admin.com
+```
+
+### Inbox
+
+```bash
+# Process inbox files manually (also runs automatically every minute)
+php artisan inbox:process
 ```
 
 ### Endpoints
