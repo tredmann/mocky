@@ -85,7 +85,7 @@ class ConditionalResponseManager extends Component
         unset($this->conditionalResponses);
     }
 
-    public function delete(int $id): void
+    public function delete(string $id): void
     {
         ConditionalResponse::where('id', $id)
             ->where('endpoint_id', $this->endpoint->id)
