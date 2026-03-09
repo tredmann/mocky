@@ -33,7 +33,8 @@ WORKDIR /app
 COPY . .
 COPY --from=assets /app/public/build ./public/build
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
+    && composer install --no-dev --optimize-autoloader --no-interaction
 
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/entrypoint.sh /entrypoint.sh
