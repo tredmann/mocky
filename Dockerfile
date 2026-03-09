@@ -1,8 +1,16 @@
+# Install PHP dependencies
+FROM composer:2 AS vendor
+
+WORKDIR /app
+COPY composer*.json ./
+RUN composer install --no-dev --no-interaction --ignore-platform-reqs
+
 # Build assets
 FROM node:22-alpine AS assets
 
 WORKDIR /app
 
+COPY --from=vendor /app/vendor ./vendor
 COPY package*.json ./
 RUN npm ci
 
