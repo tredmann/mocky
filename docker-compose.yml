@@ -17,7 +17,7 @@ services:
       DB_DATABASE: /app/database/database.sqlite
       SESSION_DRIVER: file
       CACHE_STORE: file
-      QUEUE_CONNECTION: sync
+      QUEUE_CONNECTION: database
       LOG_CHANNEL: stderr
 
 volumes:

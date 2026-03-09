@@ -23,7 +23,8 @@ FROM dunglas/frankenphp:1-php8.5-alpine
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 
-RUN install-php-extensions \
+RUN apk add --no-cache supervisor \
+    && install-php-extensions \
     opcache \
     pcntl \
     pdo_sqlite \
@@ -40,10 +41,11 @@ RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions 
     && composer install --no-dev --optimize-autoloader --no-interaction
 
 COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY docker/supervisord.conf /etc/supervisor/conf.d/app.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 80 443
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/app.conf"]
