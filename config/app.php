@@ -15,6 +15,8 @@ return [
 
     'name' => 'Mocky',
 
+    'version' => env('APP_VERSION', 'dev'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
