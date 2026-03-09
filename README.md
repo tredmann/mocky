@@ -15,7 +15,7 @@ A configurable mock REST API server. Define endpoints through a web UI, then poi
 - **Export / import** — download and restore entire collections (with all endpoints) or individual endpoints as JSON
 - **OpenAPI import** — import an OpenAPI 3.x spec (`.json`, `.yaml`, `.yml`) as a collection; path-parameter variants are automatically grouped as `path` conditional responses
 - **Postman import** — import a Postman Collection v2.1 JSON; requests sharing the same base path and method are grouped into one endpoint with path-based conditionals
-- **Inbox auto-import** — drop collection JSON files into a watched folder and they are imported automatically on a schedule; works with any Laravel filesystem disk (local, S3, etc.)
+- **Inbox** — drop collection JSON files into a watched folder; view all files on the Inbox page, import them manually with one click, or enable auto-import per user account; works with any Laravel filesystem disk (local, S3, etc.)
 - **cURL helper** — generates a ready-to-run curl command for each response, pre-filled with the condition values
 - Docker-ready with FrankenPHP
 
@@ -113,9 +113,9 @@ Both importers group requests by **base path + HTTP method**, so a typical REST 
 
 Path segments are treated as variables when they are: an OpenAPI template param (`{id}`), a Postman variable (`:id` or `{{id}}`), or a bare numeric value (`1`). Concrete numeric segments (e.g. `/users/1`) produce an `equals "1"` condition; template params produce a `not_equals ""` condition (matches any value).
 
-### Inbox auto-import
+### Inbox
 
-Instead of importing through the UI or CLI, you can drop collection JSON files into a watched folder. A scheduled job runs every minute, picks up new files, and imports them automatically.
+Instead of importing through the UI or CLI, you can drop collection JSON files into a watched folder and manage them from the **Inbox** page (`/inbox`) in the sidebar.
 
 **Setup:**
 
@@ -124,7 +124,7 @@ Add these to your `.env` (all optional — defaults work out of the box):
 ```env
 INBOX_DISK=local           # Laravel filesystem disk (local, s3, etc.)
 INBOX_PATH=inbox           # Directory on the disk to scan
-INBOX_IMPORT_USER=         # Email or UUID of the user to own imports (defaults to first user)
+INBOX_IMPORT_USER=         # Email or UUID of the user to own auto-imports (see below)
 ```
 
 Make sure the Laravel scheduler is running:
@@ -138,13 +138,19 @@ php artisan schedule:work   # development
 **How it works:**
 
 1. Place one or more collection `.json` files in the inbox folder (e.g. `storage/app/private/inbox/`)
-2. The `inbox:process` job picks them up, computes the MD5 hash, and checks the database
-3. New files are imported via `CollectionImportService`; already-seen files (by MD5) are skipped
-4. Results are logged to the `file_inbox_logs` table — visible on the **Import Log** page (`/inbox`) in the sidebar
+2. Visit `/inbox` in the sidebar — all files in the folder are listed with their import status (`pending`, `imported`, or `failed`)
+3. Click **Import** next to any file to import it immediately into your account
+4. Enable **Auto-import for my account** toggle on the Inbox page — the scheduled job (runs every minute) will automatically import new files for you
 
-Files always remain in the inbox — the database is the sole source of truth for what has been processed. Max file size is 5 MB.
+**Auto-import user resolution (scheduled job):**
 
-You can also run the job manually:
+1. Any user with "Auto-import for my account" enabled (set via the toggle on `/inbox`)
+2. `INBOX_IMPORT_USER` env var (email or UUID)
+3. First user in the database
+
+Files always remain in the inbox — the database is the sole source of truth for what has been processed. A file with the same MD5 hash is never auto-imported twice. Manual imports via the button always proceed. Max file size is 5 MB.
+
+You can also trigger the scheduled job manually:
 
 ```bash
 php artisan inbox:process

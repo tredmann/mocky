@@ -8,6 +8,7 @@ use App\Data\CollectionData;
 use App\Models\FileInboxLog;
 use App\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -20,24 +21,77 @@ class InboxImportService
         private CollectionImportService $collectionImportService,
     ) {}
 
+    /**
+     * Returns disk-relative paths of all .json files in the configured inbox path.
+     *
+     * @return Collection<int, string>
+     */
+    public function listInboxFiles(): Collection
+    {
+        return collect($this->disk()->files(config('inbox.path')))
+            ->filter(fn (string $file) => str_ends_with(strtolower($file), '.json'))
+            ->values();
+    }
+
+    /**
+     * Process a single file for the given user.
+     *
+     * Returns the FileInboxLog record, or null if the file cannot be read from disk.
+     * When $force is true, skips the global MD5 dedup check (used for manual imports).
+     */
+    public function processFile(string $filePath, User $user, bool $force = false): ?FileInboxLog
+    {
+        $disk = $this->disk();
+        $filename = basename($filePath);
+
+        $size = $disk->size($filePath);
+        if ($size > self::MAX_FILE_SIZE) {
+            return $this->createLog($filename, md5(''), $user, 'failed', 'File exceeds 5MB size limit.');
+        }
+
+        $contents = $disk->get($filePath);
+        if ($contents === null) {
+            return null;
+        }
+
+        $md5 = md5($contents);
+
+        if (! $force && FileInboxLog::where('file_md5', $md5)->exists()) {
+            return null;
+        }
+
+        $data = json_decode($contents, true);
+        if (! is_array($data)) {
+            return $this->createLog($filename, $md5, $user, 'failed', 'Invalid JSON file.');
+        }
+
+        if (empty($data['name'])) {
+            return $this->createLog($filename, $md5, $user, 'failed', 'Missing required field: name.');
+        }
+
+        try {
+            $this->collectionImportService->import($user, CollectionData::fromArray($data));
+
+            return $this->createLog($filename, $md5, $user, 'imported');
+        } catch (Throwable $e) {
+            return $this->createLog($filename, $md5, $user, 'failed', $e->getMessage());
+        }
+    }
+
     public function processInbox(): int
     {
-        $user = $this->resolveUser();
+        $user = $this->resolveAutoImportUser();
+
         if (! $user) {
-            Log::warning('Inbox import: no user configured or found. Set INBOX_IMPORT_USER in .env.');
+            Log::warning('Inbox import: no user configured or found. Set INBOX_IMPORT_USER in .env or enable auto-import for a user on the Inbox page.');
 
             return 0;
         }
 
-        $disk = $this->disk();
-        $path = config('inbox.path');
         $processed = 0;
 
-        $files = collect($disk->files($path))
-            ->filter(fn (string $file) => str_ends_with(strtolower($file), '.json'));
-
-        foreach ($files as $file) {
-            if ($this->processFile($disk, $file, $user)) {
+        foreach ($this->listInboxFiles() as $file) {
+            if ($this->processFile($file, $user) !== null) {
                 $processed++;
             }
         }
@@ -45,54 +99,9 @@ class InboxImportService
         return $processed;
     }
 
-    private function processFile(Filesystem $disk, string $file, User $user): bool
+    private function createLog(string $filename, string $md5, User $user, string $status, ?string $error = null): FileInboxLog
     {
-        $filename = basename($file);
-
-        $size = $disk->size($file);
-        if ($size > self::MAX_FILE_SIZE) {
-            $this->createLog($filename, md5(''), $user, 'failed', 'File exceeds 5MB size limit.');
-
-            return true;
-        }
-
-        $contents = $disk->get($file);
-        if ($contents === null) {
-            return false;
-        }
-
-        $md5 = md5($contents);
-
-        if (FileInboxLog::where('file_md5', $md5)->exists()) {
-            return false;
-        }
-
-        $data = json_decode($contents, true);
-        if (! is_array($data)) {
-            $this->createLog($filename, $md5, $user, 'failed', 'Invalid JSON file.');
-
-            return true;
-        }
-
-        if (empty($data['name'])) {
-            $this->createLog($filename, $md5, $user, 'failed', 'Missing required field: name.');
-
-            return true;
-        }
-
-        try {
-            $this->collectionImportService->import($user, CollectionData::fromArray($data));
-            $this->createLog($filename, $md5, $user, 'imported');
-        } catch (Throwable $e) {
-            $this->createLog($filename, $md5, $user, 'failed', $e->getMessage());
-        }
-
-        return true;
-    }
-
-    private function createLog(string $filename, string $md5, User $user, string $status, ?string $error = null): void
-    {
-        FileInboxLog::create([
+        return FileInboxLog::create([
             'filename' => $filename,
             'file_md5' => $md5,
             'disk' => config('inbox.disk'),
@@ -102,10 +111,14 @@ class InboxImportService
         ]);
     }
 
-    private function resolveUser(): ?User
+    private function resolveAutoImportUser(): ?User
     {
-        $identifier = config('inbox.user');
+        $autoUser = User::where('inbox_auto_import', true)->first();
+        if ($autoUser) {
+            return $autoUser;
+        }
 
+        $identifier = config('inbox.user');
         if ($identifier) {
             return User::find($identifier) ?? User::where('email', $identifier)->first();
         }
