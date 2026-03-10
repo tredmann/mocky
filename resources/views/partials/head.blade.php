@@ -16,7 +16,7 @@
     window.reverbConfig = {
         key: '{{ config('broadcasting.connections.reverb.key') }}',
         wsHost: '{{ request()->getHost() }}',
-        wsPort: {{ (int) (request()->getPort() ?: 80) }},
+        wsPort: {{ (int) (config('broadcasting.connections.reverb.options.ws_port') ?: request()->getPort() ?: 80) }},
         forceTLS: {{ request()->isSecure() ? 'true' : 'false' }},
     };
 </script>
