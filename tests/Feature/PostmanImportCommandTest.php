@@ -9,6 +9,7 @@ test('imports postman collection via artisan command', function () {
 
     $this->artisan('postman:import', [
         'file' => base_path('tests/fixtures/postman-users-api.json'),
+        '--user' => $user->email,
     ])
         ->expectsOutputToContain('4 endpoint(s)')
         ->assertSuccessful();
@@ -24,11 +25,11 @@ test('fails when file does not exist', function () {
         ->assertFailed();
 });
 
-test('fails when no user exists', function () {
+test('fails when --user is not provided', function () {
     $this->artisan('postman:import', [
         'file' => base_path('tests/fixtures/postman-users-api.json'),
     ])
-        ->expectsOutputToContain('User not found')
+        ->expectsOutputToContain('--user is required')
         ->assertFailed();
 });
 
@@ -59,10 +60,11 @@ test('fails with oversized file', function () {
 });
 
 test('imports minimal empty postman collection', function () {
-    User::factory()->create();
+    $user = User::factory()->create();
 
     $this->artisan('postman:import', [
         'file' => base_path('tests/fixtures/minimal-postman.json'),
+        '--user' => $user->email,
     ])
         ->expectsOutputToContain('0 endpoint(s)')
         ->assertSuccessful();

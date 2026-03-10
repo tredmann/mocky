@@ -91,23 +91,20 @@ A scheduled job (`inbox:process`) runs every minute, scanning a configurable fil
 |---------|---------|-------------|
 | `INBOX_DISK` | `local` | Laravel filesystem disk name (local, s3, etc.) |
 | `INBOX_PATH` | `inbox` | Directory path on the disk to scan for files |
-| `INBOX_IMPORT_USER` | *(first user)* | Email or UUID of the user to assign auto-imports to (fallback) |
 
 **How it works:**
 
 1. The job lists all `.json` files in the configured inbox path via `InboxImportService::listInboxFiles()`.
-2. For each file, it computes the MD5 hash of the contents.
-3. If the hash already exists in `file_inbox_logs`, the file is skipped (already processed globally).
-4. Otherwise it attempts to import via `CollectionImportService` and logs the result as `imported` or `failed`.
+2. It fetches all users with `inbox_auto_import = true`. If none exist, it logs a warning and stops.
+3. For each auto-import user and each file, it computes the MD5 hash and checks if that user has already processed this file (per-user dedup via `file_inbox_logs`).
+4. If not yet processed for that user, it imports via `CollectionImportService` and logs the result as `imported` or `failed`.
 5. Files always remain in the inbox — the database is the sole source of truth for what has been processed.
 
-**Auto-import user resolution (scheduled job):**
+**Auto-import users (scheduled job):**
 
-1. First user with `inbox_auto_import = true` on the `users` table (set via toggle on the Inbox page)
-2. `INBOX_IMPORT_USER` env var (email or UUID)
-3. First user in the database
+Only users with `inbox_auto_import = true` on the `users` table receive auto-imported files. Enable this via the toggle on the Inbox page. If no user has it enabled, the scheduler does nothing. Multiple users can have it enabled and each gets their own independent import of each file.
 
-**Manual import:** Users can click Import on any file in the Inbox page (`/inbox`). This calls `InboxImportService::processFile($path, $user, force: true)`, bypassing the global MD5 dedup so a user can import a file that was already auto-imported for someone else.
+**Manual import:** Users can click Import on any file in the Inbox page (`/inbox`). This calls `InboxImportService::processFile($path, $user, force: true)`, bypassing the per-user MD5 dedup so a user can re-import a file they already processed.
 
 **Constraints:** Max file size is 5 MB. Files must be valid collection export JSON with a `name` field. The schedule uses `withoutOverlapping()` to prevent concurrent runs.
 
@@ -122,9 +119,9 @@ A scheduled job (`inbox:process`) runs every minute, scanning a configurable fil
 
 - `inbox:process` — processes collection JSON files from the inbox folder (also runs on schedule every minute)
 - `endpoint:export {slug} {--output=}` — exports an endpoint to a JSON file (defaults to `{slug}.json`)
-- `endpoint:import {file} {--user=}` — imports from a JSON file; `--user` accepts email or UUID; defaults to the first user
-- `openapi:import {file} {--user=}` — imports an OpenAPI spec (`.json`, `.yaml`, `.yml`); max 5 MB
-- `postman:import {file} {--user=}` — imports a Postman Collection JSON; max 5 MB
+- `endpoint:import {file} {--user=}` — imports from a JSON file; `--user` (email or UUID) is **required**
+- `openapi:import {file} {--user=}` — imports an OpenAPI spec (`.json`, `.yaml`, `.yml`); max 5 MB; `--user` is **required**
+- `postman:import {file} {--user=}` — imports a Postman Collection JSON; max 5 MB; `--user` is **required**
 
 ### UI structure
 

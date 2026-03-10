@@ -74,17 +74,12 @@ test('assigns endpoint to user by id', function () {
     File::delete($path);
 });
 
-test('defaults to first user and their first collection when no options given', function () {
-    [$user, $collection] = userWithCollection();
+test('fails when --user is not provided', function () {
     $path = importFixture(['slug' => 'default-user']);
 
     $this->artisan('endpoint:import', ['file' => $path])
-        ->assertSuccessful();
-
-    $endpoint = Endpoint::where('slug', 'default-user')->first();
-
-    expect($endpoint->user_id)->toBe($user->id)
-        ->and($endpoint->collection_id)->toBe($collection->id);
+        ->expectsOutputToContain('--user is required')
+        ->assertFailed();
 
     File::delete($path);
 });

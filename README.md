@@ -68,16 +68,13 @@ You can export an entire collection — including all its endpoints and their co
 php artisan collection:export {collection-slug}
 php artisan collection:export {collection-slug} --output=my-collection.json
 
-# Import (native)
-php artisan collection:import {file}
+# Import (native) — --user is required
 php artisan collection:import {file} --user=admin@admin.com
 
-# Import from OpenAPI spec
-php artisan openapi:import {file}
+# Import from OpenAPI spec — --user is required
 php artisan openapi:import {file} --user=admin@admin.com
 
-# Import from Postman Collection
-php artisan postman:import {file}
+# Import from Postman Collection — --user is required
 php artisan postman:import {file} --user=admin@admin.com
 ```
 
@@ -124,7 +121,6 @@ Add these to your `.env` (all optional — defaults work out of the box):
 ```env
 INBOX_DISK=local           # Laravel filesystem disk (local, s3, etc.)
 INBOX_PATH=inbox           # Directory on the disk to scan
-INBOX_IMPORT_USER=         # Email or UUID of the user to own auto-imports (see below)
 ```
 
 Make sure the Laravel scheduler is running:
@@ -142,13 +138,9 @@ php artisan schedule:work   # development
 3. Click **Import** next to any file to import it immediately into your account
 4. Enable **Auto-import for my account** toggle on the Inbox page — the scheduled job (runs every minute) will automatically import new files for you
 
-**Auto-import user resolution (scheduled job):**
+**Auto-import:** Only users with "Auto-import for my account" enabled (set via the toggle on `/inbox`) receive auto-imported files. Multiple users can have it enabled — each gets their own independent copy of every new file. If no user has it enabled, the scheduler does nothing.
 
-1. Any user with "Auto-import for my account" enabled (set via the toggle on `/inbox`)
-2. `INBOX_IMPORT_USER` env var (email or UUID)
-3. First user in the database
-
-Files always remain in the inbox — the database is the sole source of truth for what has been processed. A file with the same MD5 hash is never auto-imported twice. Manual imports via the button always proceed. Max file size is 5 MB.
+Files always remain in the inbox — the database is the sole source of truth for what has been processed. A file is never auto-imported twice for the same user (per-user MD5 dedup). Manual imports via the button always proceed regardless of dedup. Max file size is 5 MB.
 
 You can also trigger the scheduled job manually:
 
@@ -192,16 +184,13 @@ A condition is made up of four parts:
 php artisan collection:export {collection-slug}
 php artisan collection:export {collection-slug} --output=my-collection.json
 
-# Import a native Mocky collection
-php artisan collection:import {file}
+# Import a native Mocky collection — --user is required
 php artisan collection:import {file} --user=admin@admin.com
 
-# Import from an OpenAPI spec (.json, .yaml, .yml)
-php artisan openapi:import {file}
+# Import from an OpenAPI spec (.json, .yaml, .yml) — --user is required
 php artisan openapi:import {file} --user=admin@admin.com
 
-# Import from a Postman Collection JSON
-php artisan postman:import {file}
+# Import from a Postman Collection JSON — --user is required
 php artisan postman:import {file} --user=admin@admin.com
 ```
 
@@ -219,12 +208,11 @@ php artisan inbox:process
 php artisan endpoint:export {collection-slug} {endpoint-slug}
 php artisan endpoint:export {collection-slug} {endpoint-slug} --output=my-endpoint.json
 
-# Import a single endpoint into a collection
-php artisan endpoint:import {file}
+# Import a single endpoint into a collection — --user is required
 php artisan endpoint:import {file} --user=admin@admin.com --collection={collection-slug}
 ```
 
-The `--user` option accepts an email or UUID. If omitted, the first user in the database is used. Duplicate slugs are automatically resolved by appending a numeric suffix.
+The `--user` option accepts an email or UUID and is required for all import commands. Duplicate slugs are automatically resolved by appending a numeric suffix.
 
 ## Running tests
 

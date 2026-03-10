@@ -9,11 +9,7 @@ use App\Data\ConditionalResponseData;
 use App\Data\EndpointData;
 use App\Models\EndpointCollection;
 use App\Models\User;
-use cebe\openapi\Reader;
-use cebe\openapi\spec\OpenApi;
-use cebe\openapi\spec\Operation;
-use cebe\openapi\spec\Response;
-use cebe\openapi\spec\Schema;
+use Symfony\Component\Yaml\Yaml;
 
 class OpenApiImportService extends AbstractImportService
 {
@@ -21,25 +17,33 @@ class OpenApiImportService extends AbstractImportService
     {
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
-        $openApi = match ($extension) {
-            'yaml', 'yml' => Reader::readFromYamlFile($filePath),
-            'json' => Reader::readFromJsonFile($filePath),
+        $spec = match ($extension) {
+            'yaml', 'yml' => Yaml::parseFile($filePath, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE),
+            'json' => json_decode(file_get_contents($filePath), true),
             default => throw new \InvalidArgumentException("Unsupported file format: {$extension}. Use .yaml, .yml, or .json."),
         };
 
-        return $this->import($user, $openApi);
+        if (! is_array($spec)) {
+            throw new \InvalidArgumentException('Invalid OpenAPI spec: could not parse file.');
+        }
+
+        return $this->import($user, $spec);
     }
 
-    public function import(User $user, OpenApi $openApi): EndpointCollection
+    /** @param array<string, mixed> $spec */
+    public function import(User $user, array $spec): EndpointCollection
     {
         $rawItems = [];
 
-        foreach ($openApi->paths as $path => $pathItem) {
-            foreach (['get', 'post', 'put', 'patch', 'delete'] as $method) {
-                /** @var Operation|null $operation */
-                $operation = $pathItem->$method ?? null;
+        foreach ($spec['paths'] ?? [] as $path => $pathItem) {
+            if (! is_array($pathItem)) {
+                continue;
+            }
 
-                if ($operation === null) {
+            foreach (['get', 'post', 'put', 'patch', 'delete'] as $method) {
+                $operation = $pathItem[$method] ?? null;
+
+                if (! is_array($operation)) {
                     continue;
                 }
 
@@ -55,9 +59,11 @@ class OpenApiImportService extends AbstractImportService
             }
         }
 
+        $info = $spec['info'] ?? [];
+
         $collectionData = new CollectionData(
-            name: $openApi->info->title ?? 'Imported API',
-            description: $openApi->info->description ?? null,
+            name: $info['title'] ?? 'Imported API',
+            description: $info['description'] ?? null,
             slug: null,
             endpoints: $this->buildEndpoints($rawItems),
         );
@@ -65,6 +71,7 @@ class OpenApiImportService extends AbstractImportService
         return $this->collectionImportService->import($user, $collectionData);
     }
 
+    /** @param array<string, mixed> $rawItem */
     protected function buildEndpointData(array $rawItem): EndpointData
     {
         return $this->buildEndpointDataFromOperation(
@@ -75,10 +82,13 @@ class OpenApiImportService extends AbstractImportService
         );
     }
 
-    private function buildEndpointDataFromOperation(string $path, string $method, Operation $operation, string $slug): EndpointData
+    /**
+     * @param  array<string, mixed>  $operation
+     */
+    private function buildEndpointDataFromOperation(string $path, string $method, array $operation, string $slug): EndpointData
     {
-        $name = $operation->operationId
-            ?? $operation->summary
+        $name = $operation['operationId']
+            ?? $operation['summary']
             ?? "{$method} {$path}";
 
         $statusCode = 200;
@@ -86,36 +96,33 @@ class OpenApiImportService extends AbstractImportService
         $responseBody = null;
         $conditionalResponses = [];
 
-        if ($operation->responses) {
-            $defaultSet = false;
+        $defaultSet = false;
 
-            foreach ($operation->responses->getResponses() as $code => $response) {
-                $code = (string) $code;
-                if ($response instanceof \cebe\openapi\spec\Reference) {
-                    continue;
-                }
+        foreach ($operation['responses'] ?? [] as $code => $response) {
+            if (! is_array($response) || isset($response['$ref'])) {
+                continue;
+            }
 
-                /** @var Response $response */
-                $resolved = $this->resolveResponseData($response);
+            $code = (string) $code;
+            $resolved = $this->resolveResponseData($response);
 
-                if (! $defaultSet && $this->isSuccessCode($code)) {
-                    $statusCode = (int) $code;
-                    $contentType = $resolved['content_type'];
-                    $responseBody = $resolved['body'];
-                    $defaultSet = true;
-                } else {
-                    $numericCode = is_numeric($code) ? (int) $code : 200;
-                    $conditionalResponses[] = new ConditionalResponseData(
-                        conditionSource: 'header',
-                        conditionField: 'X-Mock-Response',
-                        conditionOperator: 'equals',
-                        conditionValue: $code,
-                        statusCode: $numericCode,
-                        contentType: $resolved['content_type'],
-                        responseBody: $resolved['body'],
-                        priority: count($conditionalResponses),
-                    );
-                }
+            if (! $defaultSet && $this->isSuccessCode($code)) {
+                $statusCode = (int) $code;
+                $contentType = $resolved['content_type'];
+                $responseBody = $resolved['body'];
+                $defaultSet = true;
+            } else {
+                $numericCode = is_numeric($code) ? (int) $code : 200;
+                $conditionalResponses[] = new ConditionalResponseData(
+                    conditionSource: 'header',
+                    conditionField: 'X-Mock-Response',
+                    conditionOperator: 'equals',
+                    conditionValue: $code,
+                    statusCode: $numericCode,
+                    contentType: $resolved['content_type'],
+                    responseBody: $resolved['body'],
+                    priority: count($conditionalResponses),
+                );
             }
         }
 
@@ -133,76 +140,76 @@ class OpenApiImportService extends AbstractImportService
     }
 
     /** @return array{content_type: string, body: string|null} */
-    private function resolveResponseData(Response $response): array
+    private function resolveResponseData(array $response): array
     {
         $contentType = 'application/json';
         $body = null;
 
-        if ($response->content) {
-            foreach ($response->content as $mediaTypeName => $mediaType) {
-                $contentType = $mediaTypeName;
+        foreach ($response['content'] ?? [] as $mediaTypeName => $mediaType) {
+            $contentType = $mediaTypeName;
 
-                if ($mediaType->example !== null) {
-                    $body = is_string($mediaType->example)
-                        ? $mediaType->example
-                        : json_encode($mediaType->example, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-                } elseif ($mediaType->schema) {
-                    $generated = $this->generateExampleFromSchema($mediaType->schema);
-                    if ($generated !== null) {
-                        $body = json_encode($generated, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-                    }
+            if (isset($mediaType['example'])) {
+                $example = $mediaType['example'];
+                $body = is_string($example)
+                    ? $example
+                    : json_encode($example, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            } elseif (isset($mediaType['schema'])) {
+                $generated = $this->generateExampleFromSchema($mediaType['schema']);
+                if ($generated !== null) {
+                    $body = json_encode($generated, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
                 }
-
-                break;
             }
+
+            break;
         }
 
-        if ($body === null && $response->description) {
-            $body = json_encode(['message' => $response->description], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        if ($body === null && isset($response['description'])) {
+            $body = json_encode(['message' => $response['description']], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }
 
         return ['content_type' => $contentType, 'body' => $body];
     }
 
-    private function generateExampleFromSchema(Schema $schema): mixed
+    /** @param array<string, mixed> $schema */
+    private function generateExampleFromSchema(array $schema): mixed
     {
-        if ($schema->example !== null) {
-            return $schema->example;
+        if (isset($schema['example'])) {
+            return $schema['example'];
         }
 
-        $type = $schema->type;
+        $type = $schema['type'] ?? null;
 
-        if ($type === 'object' || $schema->properties) {
+        if ($type === 'object' || isset($schema['properties'])) {
             $obj = [];
-            if ($schema->properties) {
-                foreach ($schema->properties as $name => $property) {
-                    if ($property instanceof Schema) {
-                        $obj[$name] = $this->generateExampleFromSchema($property);
-                    }
+            foreach ($schema['properties'] ?? [] as $name => $property) {
+                if (is_array($property)) {
+                    $obj[$name] = $this->generateExampleFromSchema($property);
                 }
             }
 
             return $obj;
         }
 
-        if ($type === 'array' && $schema->items) {
-            $item = $schema->items instanceof Schema
-                ? $this->generateExampleFromSchema($schema->items)
-                : null;
+        if ($type === 'array' && isset($schema['items']) && is_array($schema['items'])) {
+            $item = $this->generateExampleFromSchema($schema['items']);
 
             return $item !== null ? [$item] : [];
         }
 
-        if ($schema->enum) {
-            return $schema->enum[0];
+        if (isset($schema['enum'])) {
+            return $schema['enum'][0] ?? null;
         }
 
+        $format = $schema['format'] ?? null;
+
         return match ($type) {
-            'string' => $schema->format === 'date' ? '2024-01-01'
-                : ($schema->format === 'date-time' ? '2024-01-01T00:00:00Z'
-                    : ($schema->format === 'email' ? 'user@example.com'
-                        : ($schema->format === 'uuid' ? '550e8400-e29b-41d4-a716-446655440000'
-                            : 'string'))),
+            'string' => match ($format) {
+                'date' => '2024-01-01',
+                'date-time' => '2024-01-01T00:00:00Z',
+                'email' => 'user@example.com',
+                'uuid' => '550e8400-e29b-41d4-a716-446655440000',
+                default => 'string',
+            },
             'integer' => 0,
             'number' => 0.0,
             'boolean' => false,

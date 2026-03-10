@@ -9,6 +9,7 @@ test('imports openapi yaml file via artisan command', function () {
 
     $this->artisan('openapi:import', [
         'file' => base_path('tests/fixtures/petstore.yaml'),
+        '--user' => $user->email,
     ])
         ->expectsOutputToContain('4 endpoint(s)')
         ->assertSuccessful();
@@ -19,6 +20,7 @@ test('imports openapi json file via artisan command', function () {
 
     $this->artisan('openapi:import', [
         'file' => base_path('tests/fixtures/petstore.json'),
+        '--user' => $user->email,
     ])
         ->expectsOutputToContain('1 endpoint(s)')
         ->assertSuccessful();
@@ -34,11 +36,11 @@ test('fails when file does not exist', function () {
         ->assertFailed();
 });
 
-test('fails when no user exists', function () {
+test('fails when --user is not provided', function () {
     $this->artisan('openapi:import', [
         'file' => base_path('tests/fixtures/petstore.yaml'),
     ])
-        ->expectsOutputToContain('User not found')
+        ->expectsOutputToContain('--user is required')
         ->assertFailed();
 });
 

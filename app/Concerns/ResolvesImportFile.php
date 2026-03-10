@@ -59,14 +59,16 @@ trait ResolvesImportFile
      */
     protected function resolveUser(?string $identifier): ?User
     {
-        if ($identifier) {
-            $user = User::find($identifier) ?? User::where('email', $identifier)->first();
-        } else {
-            $user = User::first();
+        if (! $identifier) {
+            $this->error('--user is required. Use --user=<email|id> to specify a user.');
+
+            return null;
         }
 
+        $user = User::find($identifier) ?? User::where('email', $identifier)->first();
+
         if (! $user) {
-            $this->error('User not found. Use --user=<email|id> to specify a user.');
+            $this->error("User [{$identifier}] not found.");
 
             return null;
         }

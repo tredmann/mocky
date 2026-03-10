@@ -57,7 +57,7 @@ class InboxImportService
 
         $md5 = md5($contents);
 
-        if (! $force && FileInboxLog::where('file_md5', $md5)->exists()) {
+        if (! $force && FileInboxLog::where('file_md5', $md5)->where('user_id', $user->id)->exists()) {
             return null;
         }
 
@@ -81,19 +81,22 @@ class InboxImportService
 
     public function processInbox(): int
     {
-        $user = $this->resolveAutoImportUser();
+        $users = User::where('inbox_auto_import', true)->get();
 
-        if (! $user) {
-            Log::warning('Inbox import: no user configured or found. Set INBOX_IMPORT_USER in .env or enable auto-import for a user on the Inbox page.');
+        if ($users->isEmpty()) {
+            Log::warning('Inbox import: no users have auto-import enabled. Enable it on the Inbox page.');
 
             return 0;
         }
 
+        $files = $this->listInboxFiles();
         $processed = 0;
 
-        foreach ($this->listInboxFiles() as $file) {
-            if ($this->processFile($file, $user) !== null) {
-                $processed++;
+        foreach ($users as $user) {
+            foreach ($files as $file) {
+                if ($this->processFile($file, $user) !== null) {
+                    $processed++;
+                }
             }
         }
 
@@ -118,21 +121,6 @@ class InboxImportService
         InboxFileProcessed::dispatch($filename, $status, $message, $user);
 
         return $log;
-    }
-
-    private function resolveAutoImportUser(): ?User
-    {
-        $autoUser = User::where('inbox_auto_import', true)->first();
-        if ($autoUser) {
-            return $autoUser;
-        }
-
-        $identifier = config('inbox.user');
-        if ($identifier) {
-            return User::find($identifier) ?? User::where('email', $identifier)->first();
-        }
-
-        return User::first();
     }
 
     private function disk(): Filesystem
