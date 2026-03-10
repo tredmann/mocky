@@ -4,6 +4,7 @@ use App\Models\FileInboxLog;
 use App\Services\InboxImportService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -15,9 +16,26 @@ new #[Title('Inbox')] class extends Component {
 
     public ?string $importError = null;
 
+    public string $userId = '';
+
     public function mount(): void
     {
         $this->autoImport = (bool) Auth::user()->inbox_auto_import;
+        $this->userId = Auth::id();
+    }
+
+    #[On('echo-private:inbox.{userId},InboxFileProcessed')]
+    public function handleFileProcessed(array $event): void
+    {
+        unset($this->files);
+
+        if ($event['status'] === 'imported') {
+            $this->importMessage = $event['message'];
+            $this->importError = null;
+        } else {
+            $this->importError = $event['message'];
+            $this->importMessage = null;
+        }
     }
 
     public function updatedAutoImport(bool $value): void

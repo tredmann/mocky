@@ -4,6 +4,7 @@ use App\Models\Endpoint;
 use App\Models\EndpointCollection;
 use App\Models\EndpointLog;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -14,10 +15,19 @@ new #[Title('Logs')] class extends Component {
     public EndpointCollection $collection;
     public Endpoint $endpoint;
     public ?int $expandedLog = null;
+    public string $endpointId = '';
 
     public function mount(): void
     {
         $this->authorize('view', $this->endpoint);
+        $this->endpointId = $this->endpoint->id;
+    }
+
+    #[On('echo:endpoint.{endpointId},EndpointLogCreated')]
+    public function handleNewLog(): void
+    {
+        $this->resetPage();
+        unset($this->logs);
     }
 
     #[Computed]
@@ -65,7 +75,23 @@ new #[Title('Logs')] class extends Component {
     <div class="flex items-center gap-3">
         <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost" icon="arrow-left" size="sm" />
         <div>
-            <flux:heading size="xl">Logs</flux:heading>
+            <div class="flex items-center gap-2">
+                <flux:heading size="xl">Logs</flux:heading>
+                <span
+                    x-data="{ connected: false }"
+                    x-init="
+                        window.Echo?.connector?.pusher?.connection?.bind('connected', () => connected = true);
+                        window.Echo?.connector?.pusher?.connection?.bind('disconnected', () => connected = false);
+                        window.Echo?.connector?.pusher?.connection?.bind('unavailable', () => connected = false);
+                        if (window.Echo?.connector?.pusher?.connection?.state === 'connected') connected = true;
+                    "
+                    x-show="connected"
+                    class="flex items-center gap-1 text-xs text-green-600 dark:text-green-400"
+                >
+                    <span class="inline-block size-1.5 rounded-full bg-green-500"></span>
+                    Live
+                </span>
+            </div>
             <flux:subheading>{{ $endpoint->name }}</flux:subheading>
         </div>
     </div>

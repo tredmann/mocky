@@ -7,6 +7,10 @@
     root * /app/public
     encode zstd br gzip
 
+    # Proxy WebSocket connections to Reverb
+    @reverb path /app/*
+    reverse_proxy @reverb localhost:8080
+
     php_server {
         resolve_root_symlink
     }

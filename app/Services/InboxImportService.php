@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Data\CollectionData;
+use App\Events\InboxFileProcessed;
 use App\Models\FileInboxLog;
 use App\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -101,7 +102,7 @@ class InboxImportService
 
     private function createLog(string $filename, string $md5, User $user, string $status, ?string $error = null): FileInboxLog
     {
-        return FileInboxLog::create([
+        $log = FileInboxLog::create([
             'filename' => $filename,
             'file_md5' => $md5,
             'disk' => config('inbox.disk'),
@@ -109,6 +110,14 @@ class InboxImportService
             'error_message' => $error,
             'user_id' => $user->id,
         ]);
+
+        $message = $status === 'imported'
+            ? "'{$filename}' imported successfully."
+            : ($error ?? 'Import failed.');
+
+        InboxFileProcessed::dispatch($filename, $status, $message, $user);
+
+        return $log;
     }
 
     private function resolveAutoImportUser(): ?User

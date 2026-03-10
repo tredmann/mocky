@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Events\EndpointLogCreated;
 use App\Models\ConditionalResponse;
 use App\Models\Endpoint;
 use App\Models\EndpointLog;
@@ -18,7 +19,7 @@ class MockRequestLogger
         int $responseStatus,
         ?string $responseBody,
     ): EndpointLog {
-        return EndpointLog::create([
+        $log = EndpointLog::create([
             'endpoint_id' => $endpoint->id,
             'matched_conditional_response_id' => $matched?->id,
             'request_method' => $request->method(),
@@ -30,5 +31,9 @@ class MockRequestLogger
             'response_status_code' => $responseStatus,
             'response_body' => $responseBody,
         ]);
+
+        EndpointLogCreated::dispatch($log);
+
+        return $log;
     }
 }
