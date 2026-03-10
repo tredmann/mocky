@@ -19,6 +19,13 @@ services:
       CACHE_STORE: file
       QUEUE_CONNECTION: database
       LOG_CHANNEL: stderr
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: "mocky"
+      REVERB_APP_KEY: "mocky-reverb-key"
+      REVERB_APP_SECRET: "mocky-reverb-secret"
+      REVERB_HOST: "0.0.0.0"
+      REVERB_PORT: "8080"
+      REVERB_SCHEME: "http"
 
 volumes:
   sqlite:

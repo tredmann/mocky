@@ -12,5 +12,13 @@
 <link rel="preconnect" href="https://fonts.bunny.net">
 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
+<script>
+    window.reverbConfig = {
+        key: '{{ config('broadcasting.connections.reverb.key') }}',
+        wsHost: '{{ request()->getHost() }}',
+        wsPort: {{ (int) (request()->getPort() ?: 80) }},
+        forceTLS: {{ request()->isSecure() ? 'true' : 'false' }},
+    };
+</script>
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance
