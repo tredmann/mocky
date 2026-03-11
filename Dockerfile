@@ -1,12 +1,12 @@
 # Install PHP dependencies
-FROM composer:2 AS vendor
+FROM --platform=$BUILDPLATFORM composer:2 AS vendor
 
 WORKDIR /app
 COPY composer*.json ./
 RUN composer install --no-dev --no-interaction --no-scripts --ignore-platform-reqs
 
 # Build assets
-FROM node:22-alpine AS assets
+FROM --platform=$BUILDPLATFORM node:22-alpine AS assets
 
 WORKDIR /app
 
