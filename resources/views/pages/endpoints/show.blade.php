@@ -89,6 +89,9 @@ new #[Title('Endpoint')] class extends Component {
     <div class="flex items-center gap-3">
         <flux:button href="{{ route('collections.show', $endpoint->collection) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">{{ $endpoint->name }}</flux:heading>
+        @if ($endpoint->isSoap())
+            <flux:badge color="purple" size="sm">SOAP</flux:badge>
+        @endif
         <flux:switch
             wire:click="toggleActive"
             :checked="$endpoint->is_active"
@@ -108,15 +111,16 @@ new #[Title('Endpoint')] class extends Component {
                     default => 'zinc',
                 } }}">{{ $endpoint->method }}</flux:badge>
             </div>
+            @php $displayUrl = $endpoint->isSoap() ? $endpoint->soap_url : $endpoint->mock_url; @endphp
             <div class="col-span-2">
-                <p class="mb-1 text-xs font-medium text-neutral-400">Mock URL</p>
+                <p class="mb-1 text-xs font-medium text-neutral-400">{{ $endpoint->isSoap() ? 'SOAP URL' : 'Mock URL' }}</p>
                 <div class="flex items-center gap-2">
-                    <code class="flex-1 text-sm">{{ $endpoint->mock_url }}</code>
+                    <code class="flex-1 text-sm">{{ $displayUrl }}</code>
                     <flux:button
                         size="sm"
                         variant="ghost"
                         icon="clipboard"
-                        x-on:click="navigator.clipboard.writeText('{{ $endpoint->mock_url }}')"
+                        x-on:click="navigator.clipboard.writeText('{{ $displayUrl }}')"
                     />
                 </div>
             </div>

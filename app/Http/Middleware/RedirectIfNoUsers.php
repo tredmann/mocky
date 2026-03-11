@@ -11,7 +11,7 @@ class RedirectIfNoUsers
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (User::count() === 0 && ! $request->is('register', 'login', 'forgot-password', 'reset-password/*', 'two-factor-challenge', 'mock/*')) {
+        if (User::count() === 0 && ! $request->is('register', 'login', 'forgot-password', 'reset-password/*', 'two-factor-challenge', 'mock/*', 'soap/*')) {
             return redirect()->route('register');
         }
 

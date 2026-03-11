@@ -19,6 +19,7 @@ readonly class EndpointData
         public bool $isActive,
         public ?string $description,
         public array $conditionalResponses,
+        public ?string $type = null,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -37,6 +38,7 @@ readonly class EndpointData
                 fn (array $cr) => ConditionalResponseData::fromArray($cr),
                 $data['conditional_responses'] ?? [],
             ),
+            type: isset($data['type']) ? (string) $data['type'] : null,
         );
     }
 
@@ -57,6 +59,7 @@ readonly class EndpointData
             isActive: $this->isActive,
             description: $this->description,
             conditionalResponses: array_merge($this->conditionalResponses, $extra),
+            type: $this->type,
         );
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\MockController;
+use App\Http\Controllers\SoapController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
@@ -22,5 +23,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::any('/mock/{collectionSlug}/{endpointSlug}/{path?}', [MockController::class, 'handle'])
     ->where('path', '.*')
     ->name('mock');
+
+Route::post('/soap/{collectionSlug}/{endpointSlug}', [SoapController::class, 'handle'])
+    ->name('soap');
 
 require __DIR__.'/settings.php';

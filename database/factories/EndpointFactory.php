@@ -21,6 +21,7 @@ class EndpointFactory extends Factory
             'content_type' => 'application/json',
             'response_body' => '{"message":"ok"}',
             'is_active' => true,
+            'type' => 'rest',
         ];
     }
 }

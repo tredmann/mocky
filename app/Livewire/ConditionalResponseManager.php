@@ -24,6 +24,9 @@ class ConditionalResponseManager extends Component
     #[Reactive]
     public string $method = 'GET';
 
+    #[Reactive]
+    public string $endpointType = 'rest';
+
     // Form visibility
     public bool $showForm = false;
 
@@ -45,13 +48,14 @@ class ConditionalResponseManager extends Component
 
     public function mount(): void
     {
-        $this->condition_source = $this->method === 'GET' ? ConditionSource::Query->value : ConditionSource::Body->value;
+        $this->condition_source = $this->defaultConditionSource();
+        $this->content_type = $this->endpointType === 'soap' ? 'text/xml' : 'application/json';
     }
 
     public function updatedMethod(string $value): void
     {
         if (! $this->showForm) {
-            $this->condition_source = $value === 'GET' ? ConditionSource::Query->value : ConditionSource::Body->value;
+            $this->condition_source = $this->defaultConditionSource();
         }
     }
 
@@ -100,13 +104,22 @@ class ConditionalResponseManager extends Component
     public function resetForm(): void
     {
         $this->showForm = false;
-        $this->condition_source = $this->method === 'GET' ? ConditionSource::Query->value : ConditionSource::Body->value;
+        $this->condition_source = $this->defaultConditionSource();
         $this->condition_field = '';
         $this->condition_operator = ConditionOperator::Equals->value;
         $this->condition_value = '';
         $this->status_code = 200;
-        $this->content_type = 'application/json';
+        $this->content_type = $this->endpointType === 'soap' ? 'text/xml' : 'application/json';
         $this->response_body = '';
+    }
+
+    private function defaultConditionSource(): string
+    {
+        if ($this->endpointType === 'soap') {
+            return ConditionSource::SoapAction->value;
+        }
+
+        return $this->method === 'GET' ? ConditionSource::Query->value : ConditionSource::Body->value;
     }
 
     public function render()

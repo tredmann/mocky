@@ -15,7 +15,7 @@ class EndpointResolver
      * @throws EndpointNotFoundException
      * @throws MethodNotAllowedException
      */
-    public function resolve(string $collectionSlug, string $endpointSlug, string $method): Endpoint
+    public function resolve(string $collectionSlug, string $endpointSlug, string $method, ?string $type = null): Endpoint
     {
         $collection = EndpointCollection::where('slug', $collectionSlug)->first();
 
@@ -23,15 +23,24 @@ class EndpointResolver
             throw new EndpointNotFoundException;
         }
 
-        $endpoint = $collection->endpoints()
+        $query = $collection->endpoints()
             ->where('slug', $endpointSlug)
-            ->where('method', $method)
-            ->first();
+            ->where('method', $method);
+
+        if ($type !== null) {
+            $query->where('type', $type);
+        }
+
+        $endpoint = $query->first();
 
         if (! $endpoint) {
-            $allowedMethods = $collection->endpoints()
-                ->where('slug', $endpointSlug)
-                ->pluck('method');
+            $allowedQuery = $collection->endpoints()->where('slug', $endpointSlug);
+
+            if ($type !== null) {
+                $allowedQuery->where('type', $type);
+            }
+
+            $allowedMethods = $allowedQuery->pluck('method');
 
             if ($allowedMethods->isEmpty()) {
                 throw new EndpointNotFoundException;

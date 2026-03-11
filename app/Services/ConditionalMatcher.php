@@ -12,6 +12,11 @@ use Illuminate\Http\Request;
 
 class ConditionalMatcher
 {
+    public function __construct(
+        private SoapBodyParser $soapBodyParser,
+        private SoapActionExtractor $soapActionExtractor,
+    ) {}
+
     /**
      * @param  Collection<int, ConditionalResponse>  $conditionals
      */
@@ -33,6 +38,8 @@ class ConditionalMatcher
             ConditionSource::Query => $request->query($conditional->condition_field),
             ConditionSource::Header => $request->header($conditional->condition_field),
             ConditionSource::Path => $pathSegments[(int) $conditional->condition_field] ?? null,
+            ConditionSource::SoapBody => $this->soapBodyParser->extract($request->getContent(), $conditional->condition_field),
+            ConditionSource::SoapAction => $this->soapActionExtractor->extract($request),
         };
 
         if ($actual === null) {

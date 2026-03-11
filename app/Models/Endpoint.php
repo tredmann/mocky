@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EndpointType;
 use App\Models\Concerns\FormatsResponseBody;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,11 +25,13 @@ class Endpoint extends Model
         'content_type',
         'response_body',
         'is_active',
+        'type',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'status_code' => 'integer',
+        'type' => EndpointType::class,
     ];
 
     /** @return BelongsTo<User, $this> */
@@ -60,5 +63,17 @@ class Endpoint extends Model
         $collectionSlug = $this->collection->slug ?? $this->collection_id;
 
         return url("/mock/{$collectionSlug}/{$this->slug}");
+    }
+
+    public function getSoapUrlAttribute(): string
+    {
+        $collectionSlug = $this->collection->slug ?? $this->collection_id;
+
+        return url("/soap/{$collectionSlug}/{$this->slug}");
+    }
+
+    public function isSoap(): bool
+    {
+        return $this->type === EndpointType::Soap;
     }
 }

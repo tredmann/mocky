@@ -31,44 +31,62 @@ Tests use an in-memory SQLite database — no setup required.
 
 ## Architecture
 
-This is a **configurable mock API server** built with Laravel 12, Livewire 4, Flux (UI components), and Pest.
+This is a **configurable mock API server** (REST and SOAP) built with Laravel 12, Livewire 4, Flux (UI components), and Pest.
 
 ### Core concept
 
-Users define **endpoints** with a unique slug. Any HTTP client can hit `/mock/{slug}` and receive the configured response. The mock controller evaluates conditional responses in priority order before falling back to the default.
+Users define **endpoints** with a unique slug and a type (`rest` or `soap`). REST endpoints are served at `/mock/{collection}/{slug}`, SOAP endpoints at `/soap/{collection}/{slug}`. The pipeline evaluates conditional responses in priority order before falling back to the default.
 
 ### Request flow
 
 ```
-ANY /mock/{endpoint} → MockController::handle()
+ANY  /mock/{collection}/{endpoint}/{path?} → MockController::handle()
+    → EndpointResolver::resolve(..., type='rest')
     → check is_active, method match
-    → evaluate ConditionalResponse::matches() in priority order
-    → log to EndpointLog
+    → ConditionalMatcher: evaluate conditionals in priority order
+    → MockRequestLogger::log()
     → return response
+
+POST /soap/{collection}/{endpoint} → SoapController::handle()
+    → validate Content-Type contains 'xml' (else 415 SOAP Fault)
+    → MockRequestPipeline::handleSoap()
+    → EndpointResolver::resolve(..., type='soap')
+    → ConditionalMatcher: evaluate conditionals in priority order
+    → MockRequestLogger::log()
+    → return response (SOAP Fault on errors)
 ```
 
-Route model binding on `Endpoint` uses `slug` as the key (`getRouteKeyName()`). The route also accepts extra path segments via `/mock/{endpoint}/{path?}` with a wildcard, captured as `$path` and split into an array for path-segment conditions.
+The `/mock/` route only resolves `type='rest'` endpoints; the `/soap/` route only resolves `type='soap'` endpoints — they are fully isolated. Both routes are outside the auth middleware group and excluded from CSRF verification and the `RedirectIfNoUsers` middleware.
+
+The `/mock/` route accepts extra path segments via `/{path?}` wildcard, captured as `$path` and split into an array for path-segment conditions.
 
 ### Conditional response matching
 
-Each `ConditionalResponse` has one condition: a **source** (`body`, `query`, `header`, `path`), a **field**, an **operator** (`equals`, `not_equals`, `contains`), and a **value**. Matching logic lives in `ConditionalResponse::matches(Request $request, array $pathSegments)`.
+Each `ConditionalResponse` has one condition: a **source** (`body`, `query`, `header`, `path`, `soap_action`, `soap_body`), a **field**, an **operator** (`equals`, `not_equals`, `contains`), and a **value**. Matching logic lives in `ConditionalMatcher::evaluate()`, injecting `SoapBodyParser` and `SoapActionExtractor`.
 
 - `body` — uses `data_get()` with dot notation on the JSON body
 - `query` — query parameter by name
 - `header` — header by name (case-insensitive)
 - `path` — segment index (0-based) from the extra URL segments after the slug
+- `soap_action` — SOAP action string; extracted from `SOAPAction` header (SOAP 1.1) or `action=` param in Content-Type (SOAP 1.2) by `SoapActionExtractor`
+- `soap_body` — dot-notation path into the SOAP Body element (e.g. `GetUser.userId`), parsed namespace-agnostically by `SoapBodyParser` using `localName`
 
 ### Models
 
 `User` uses UUIDs as primary key (`HasUuids` trait). All related foreign keys (`user_id`, etc.) are `foreignUuid`. `ProfileValidationRules` type-hints `int|string|null` for user IDs to accommodate UUIDs.
 
+`Endpoint` has a `type` column (`string`, default `'rest'`) cast to the `EndpointType` enum (`EndpointType::Rest` / `EndpointType::Soap`). SOAP endpoints expose a `soap_url` attribute and an `isSoap()` helper. The `EndpointFactory` defaults `type` to `'rest'`.
+
 ### Services
 
 - `EndpointExportService` — serialises an endpoint + its conditional responses to a JSON streamed download
 - `EndpointImportService` — creates an endpoint + conditional responses from the exported JSON array; regenerates the slug if it already exists
-- `CurlCommandBuilder` — builds a representative curl command for an endpoint's default response or a conditional response. For `not_equals` conditions the example value is `"other"` (not the condition value) so the command actually triggers the condition.
+- `CurlCommandBuilder` — builds a representative curl command for an endpoint's default response or a conditional response. For `not_equals` conditions the example value is `"other"` (not the condition value) so the command actually triggers the condition. For SOAP endpoints it builds `curl` with a SOAP envelope body and `Content-Type: text/xml`.
 - `OpenApiImportService` — imports an OpenAPI 3.x spec (JSON or YAML); groups operations sharing the same base path + method into one endpoint, turning path-parameter variants (e.g. `GET /pets/{petId}`) into `path` conditional responses on the base endpoint.
 - `PostmanImportService` — imports a Postman Collection v2.1 JSON; groups requests with the same base path + method into one endpoint; numeric trailing path segments (e.g. `/users/1`) become `path` conditional responses; `:param`-style segments behave like OpenAPI template params.
+- `SoapBodyParser` — extracts a value from a SOAP XML body using dot notation (e.g. `GetUser.userId`); namespace-agnostic via `localName`; returns `null` on any failure.
+- `SoapActionExtractor` — extracts the SOAP action string from a request; checks `SOAPAction` header first (SOAP 1.1, strips quotes), then `action=` param in Content-Type (SOAP 1.2); returns `null` if absent.
+- `WsdlImportService` — parses a WSDL 1.1 document; creates one `EndpointData` (type `soap`) per SOAP binding; maps each operation to a `soap_action` (or `soap_body`) conditional response with a skeleton response envelope; default response is a generic SOAP Fault.
 
 ### Import grouping logic
 
@@ -122,6 +140,7 @@ Only users with `inbox_auto_import = true` on the `users` table receive auto-imp
 - `endpoint:import {file} {--user=}` — imports from a JSON file; `--user` (email or UUID) is **required**
 - `openapi:import {file} {--user=}` — imports an OpenAPI spec (`.json`, `.yaml`, `.yml`); max 5 MB; `--user` is **required**
 - `postman:import {file} {--user=}` — imports a Postman Collection JSON; max 5 MB; `--user` is **required**
+- `wsdl:import {file} {--user=}` — imports a WSDL 1.1 file as a SOAP collection; max 5 MB; `--user` is **required**
 
 ### UI structure
 

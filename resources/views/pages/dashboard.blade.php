@@ -3,6 +3,7 @@
 use App\Services\CollectionImportService;
 use App\Services\OpenApiImportService;
 use App\Services\PostmanImportService;
+use App\Services\WsdlImportService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -26,15 +27,20 @@ new #[Title('Dashboard')] class extends Component {
         CollectionImportService $collectionService,
         OpenApiImportService $openApiService,
         PostmanImportService $postmanService,
+        WsdlImportService $wsdlService,
     ): void {
-        $rules = $this->importType === 'openapi'
-            ? ['required', 'file', 'max:5120']
-            : ['required', 'file', 'mimes:json', 'max:5120'];
+        $rules = match ($this->importType) {
+            'openapi' => ['required', 'file', 'max:5120'],
+            'wsdl'    => ['required', 'file', 'max:5120'],
+            default   => ['required', 'file', 'mimes:json', 'max:5120'],
+        };
         $this->validate(['importFile' => $rules]);
 
         try {
             if ($this->importType === 'openapi') {
                 $openApiService->importFromFile(auth()->user(), $this->importFile->getRealPath());
+            } elseif ($this->importType === 'wsdl') {
+                $wsdlService->importFromFile(auth()->user(), $this->importFile->getRealPath());
             } elseif ($this->importType === 'postman') {
                 $data = json_decode(file_get_contents($this->importFile->getRealPath()), true);
 
@@ -105,12 +111,13 @@ new #[Title('Dashboard')] class extends Component {
                     <flux:select.option value="native">Native JSON</flux:select.option>
                     <flux:select.option value="openapi">OpenAPI (JSON / YAML)</flux:select.option>
                     <flux:select.option value="postman">Postman Collection</flux:select.option>
+                    <flux:select.option value="wsdl">WSDL (SOAP)</flux:select.option>
                 </flux:select>
             </flux:field>
 
             <flux:field>
                 <flux:label>File</flux:label>
-                <flux:input wire:key="import-file-{{ $importType }}" wire:model="importFile" type="file" accept="{{ $importType === 'openapi' ? '.json,.yaml,.yml' : '.json' }}" />
+                <flux:input wire:key="import-file-{{ $importType }}" wire:model="importFile" type="file" accept="{{ $importType === 'openapi' ? '.json,.yaml,.yml' : ($importType === 'wsdl' ? '.wsdl,.xml' : '.json') }}" />
                 <flux:error name="importFile" />
             </flux:field>
 

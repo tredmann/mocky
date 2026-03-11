@@ -19,6 +19,7 @@ class EndpointExportService
             'content_type' => $endpoint->content_type,
             'response_body' => $endpoint->response_body,
             'is_active' => $endpoint->is_active,
+            'type' => $endpoint->type->value,
             'conditional_responses' => $endpoint->conditionalResponses()
                 ->get()
                 ->map(fn ($cr) => [

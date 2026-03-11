@@ -1,6 +1,6 @@
 # Mocky
 
-A configurable mock REST API server. Define endpoints through a web UI, then point any HTTP client at them to receive the responses you configured — useful for testing, prototyping, and simulating third-party APIs.
+A configurable mock API server for REST and SOAP. Define endpoints through a web UI, then point any HTTP client at them to receive the responses you configured — useful for testing, prototyping, and simulating third-party APIs.
 
 ![mocky screenshot](/public/screenshot.png "Mocky Dashboard")
 
@@ -15,6 +15,8 @@ A configurable mock REST API server. Define endpoints through a web UI, then poi
 - **Export / import** — download and restore entire collections (with all endpoints) or individual endpoints as JSON
 - **OpenAPI import** — import an OpenAPI 3.x spec (`.json`, `.yaml`, `.yml`) as a collection; path-parameter variants are automatically grouped as `path` conditional responses
 - **Postman import** — import a Postman Collection v2.1 JSON; requests sharing the same base path and method are grouped into one endpoint with path-based conditionals
+- **SOAP mock server** — define SOAP endpoints that respond to any WSDL-based service; match requests by SOAPAction header or body element (dot notation); write full SOAP envelopes as responses; supports SOAP 1.1 and 1.2
+- **WSDL import** — import a WSDL 1.1 file to auto-generate a SOAP collection; one endpoint per binding, one conditional response per operation
 - **Inbox** — drop collection JSON files into a watched folder; view all files on the Inbox page, import them manually with one click, or enable auto-import per user account; works with any Laravel filesystem disk (local, S3, etc.)
 - **cURL helper** — generates a ready-to-run curl command for each response, pre-filled with the condition values
 - Docker-ready with FrankenPHP
@@ -76,6 +78,9 @@ php artisan openapi:import {file} --user=admin@admin.com
 
 # Import from Postman Collection — --user is required
 php artisan postman:import {file} --user=admin@admin.com
+
+# Import from WSDL — --user is required
+php artisan wsdl:import {file} --user=admin@admin.com
 ```
 
 The exported format looks like this:
@@ -150,12 +155,18 @@ php artisan inbox:process
 
 ## How it works
 
-Each endpoint gets a unique slug and a configured HTTP method. When a request arrives at `/mock/{slug}`, the controller:
+### REST endpoints
+
+Each REST endpoint gets a unique slug and a configured HTTP method. When a request arrives at `/mock/{collection}/{slug}`, the controller:
 
 1. Checks the endpoint is active and the method matches
 2. Evaluates **conditional responses** in priority order — the first matching condition wins
 3. Falls back to the **default response** if nothing matches
 4. Logs the request regardless of outcome
+
+### SOAP endpoints
+
+SOAP endpoints are served at `/soap/{collection}/{slug}` (POST only, `Content-Type: text/xml` or `application/soap+xml` required). The same pipeline applies — conditional responses are evaluated first, then the default response. Responses should be full SOAP envelopes.
 
 ### Conditional responses
 
@@ -163,17 +174,36 @@ A condition is made up of four parts:
 
 | Part | Options |
 |------|---------|
-| Source | `query`, `header`, `body`, `path` |
-| Field | param name, header name, JSON field (dot notation), or path segment index |
+| Source | `query`, `header`, `body`, `path`, `soap_action`, `soap_body` |
+| Field | param name, header name, JSON/XML field (dot notation), path segment index, or `soap_action` |
 | Operator | `equals`, `not_equals`, `contains` |
 | Value | the value to match against |
 
-**Examples:**
+**REST examples:**
 
 - Return 404 when the `id` body field equals `0`
 - Return 401 when the `Authorization` header does not contain `Bearer`
 - Return a different payload when `?version=2` is in the query string
 - Match `/mock/my-api/users` by setting source `path`, field `0`, value `users`
+
+**SOAP examples:**
+
+- Return a `GetUserResponse` envelope when `soap_action` equals `http://example.com/GetUser`
+- Match on a body element: source `soap_body`, field `GetUser.userId`, operator `equals`, value `123`
+
+### WSDL import
+
+Import a WSDL 1.1 file to generate a full SOAP collection automatically:
+
+```bash
+php artisan wsdl:import my-service.wsdl --user=admin@admin.com
+```
+
+Or use the **Import → WSDL** button on the dashboard. For each SOAP binding in the WSDL, one endpoint is created. Each operation becomes a conditional response:
+- Operations with a `soapAction` attribute → `soap_action equals "{soapAction}"` condition
+- Operations without a `soapAction` → `soap_body not_equals ""` condition on the operation name
+
+The default response is a generic SOAP Fault. Each conditional response is pre-filled with a skeleton `{OperationName}Response` envelope with a TODO comment for you to fill in.
 
 ## Artisan commands
 
@@ -192,6 +222,9 @@ php artisan openapi:import {file} --user=admin@admin.com
 
 # Import from a Postman Collection JSON — --user is required
 php artisan postman:import {file} --user=admin@admin.com
+
+# Import from a WSDL 1.1 file — --user is required
+php artisan wsdl:import {file} --user=admin@admin.com
 ```
 
 ### Inbox

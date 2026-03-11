@@ -21,6 +21,7 @@ class CreateEndpoint
         ?string $description = null,
         ?string $responseBody = null,
         bool $isActive = true,
+        string $type = 'rest',
     ): Endpoint {
         $slug = $this->uniqueSlug($collection, $slug, $method);
 
@@ -34,6 +35,7 @@ class CreateEndpoint
             'content_type' => $contentType,
             'response_body' => $responseBody,
             'is_active' => $isActive,
+            'type' => $type,
         ]);
     }
 

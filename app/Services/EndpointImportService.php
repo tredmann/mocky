@@ -30,6 +30,7 @@ class EndpointImportService
             $data->description,
             $data->responseBody,
             $data->isActive,
+            $data->type ?? 'rest',
         );
 
         foreach ($data->conditionalResponses as $cr) {

@@ -17,6 +17,7 @@ new #[Title('Edit Endpoint')] class extends Component {
     public string $name = '';
     public string $slug = '';
     public string $description = '';
+    public string $type = 'rest';
     public string $method = 'GET';
 
     // Default response fields
@@ -34,6 +35,7 @@ new #[Title('Edit Endpoint')] class extends Component {
         $this->name          = $this->endpoint->name;
         $this->slug          = $this->endpoint->slug;
         $this->description   = $this->endpoint->description ?? '';
+        $this->type          = $this->endpoint->type->value;
         $this->method        = $this->endpoint->method;
         $this->status_code   = $this->endpoint->status_code;
         $this->content_type  = $this->endpoint->content_type;
@@ -42,6 +44,10 @@ new #[Title('Edit Endpoint')] class extends Component {
 
     public function save(UpdateEndpoint $action): void
     {
+        if ($this->type === 'soap') {
+            $this->method = 'POST';
+        }
+
         $this->validate($this->endpointRules(
             $this->endpoint->collection_id,
             $this->method,
@@ -77,16 +83,20 @@ new #[Title('Edit Endpoint')] class extends Component {
     <div class="flex items-center gap-3">
         <flux:button href="{{ route('endpoints.show', [$endpoint->collection, $endpoint]) }}" variant="ghost" icon="arrow-left" size="sm" />
         <flux:heading size="xl">Edit Endpoint</flux:heading>
+        @if ($endpoint->isSoap())
+            <flux:badge color="purple" size="sm">SOAP</flux:badge>
+        @endif
     </div>
 
     {{-- Mock URL --}}
+    @php $displayUrl = $endpoint->isSoap() ? $endpoint->soap_url : $endpoint->mock_url; @endphp
     <div class="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800">
-        <code class="flex-1 text-sm">{{ $endpoint->mock_url }}</code>
+        <code class="flex-1 text-sm">{{ $displayUrl }}</code>
         <flux:button
             size="sm"
             variant="ghost"
             icon="clipboard"
-            x-on:click="navigator.clipboard.writeText('{{ $endpoint->mock_url }}')"
+            x-on:click="navigator.clipboard.writeText('{{ $displayUrl }}')"
         />
     </div>
 
@@ -105,7 +115,11 @@ new #[Title('Edit Endpoint')] class extends Component {
             <flux:field>
                 <flux:label>Slug</flux:label>
                 <flux:input wire:model.live.debounce.300ms="slug" />
-                <flux:description>The URL path for this endpoint: <code>{{ $endpoint->collection->mock_url_prefix }}/{{ $slug ?: 'your-slug' }}</code></flux:description>
+                @if ($endpoint->isSoap())
+                    <flux:description>The URL path for this endpoint: <code>{{ url('/soap/' . $endpoint->collection->slug) }}/{{ $slug ?: 'your-slug' }}</code></flux:description>
+                @else
+                    <flux:description>The URL path for this endpoint: <code>{{ $endpoint->collection->mock_url_prefix }}/{{ $slug ?: 'your-slug' }}</code></flux:description>
+                @endif
                 <flux:error name="slug" />
             </flux:field>
 
@@ -115,17 +129,23 @@ new #[Title('Edit Endpoint')] class extends Component {
                 <flux:error name="description" />
             </flux:field>
 
-            <flux:field>
-                <flux:label>Method</flux:label>
-                <flux:select wire:model.live="method">
-                    <flux:select.option value="GET">GET</flux:select.option>
-                    <flux:select.option value="POST">POST</flux:select.option>
-                    <flux:select.option value="PUT">PUT</flux:select.option>
-                    <flux:select.option value="PATCH">PATCH</flux:select.option>
-                    <flux:select.option value="DELETE">DELETE</flux:select.option>
-                </flux:select>
-                <flux:error name="method" />
-            </flux:field>
+            @if ($endpoint->isSoap())
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950">
+                    <p class="text-sm text-amber-800 dark:text-amber-200">SOAP endpoints always use <strong>POST</strong>. Operations are routed via the <code>SOAPAction</code> header or the XML body using conditional responses.</p>
+                </div>
+            @else
+                <flux:field>
+                    <flux:label>Method</flux:label>
+                    <flux:select wire:model.live="method">
+                        <flux:select.option value="GET">GET</flux:select.option>
+                        <flux:select.option value="POST">POST</flux:select.option>
+                        <flux:select.option value="PUT">PUT</flux:select.option>
+                        <flux:select.option value="PATCH">PATCH</flux:select.option>
+                        <flux:select.option value="DELETE">DELETE</flux:select.option>
+                    </flux:select>
+                    <flux:error name="method" />
+                </flux:field>
+            @endif
         </flux:card>
 
         {{-- Default Response --}}
@@ -149,6 +169,7 @@ new #[Title('Edit Endpoint')] class extends Component {
                         <flux:select.option value="text/plain">text/plain</flux:select.option>
                         <flux:select.option value="text/html">text/html</flux:select.option>
                         <flux:select.option value="application/xml">application/xml</flux:select.option>
+                        <flux:select.option value="text/xml">text/xml</flux:select.option>
                     </flux:select>
                     <flux:error name="content_type" />
                 </flux:field>
@@ -172,6 +193,6 @@ new #[Title('Edit Endpoint')] class extends Component {
     </form>
 
     {{-- Conditional Responses --}}
-    <livewire:conditional-response-manager :endpoint="$endpoint" :method="$method" />
+    <livewire:conditional-response-manager :endpoint="$endpoint" :method="$method" :endpoint-type="$type" />
 
 </div>

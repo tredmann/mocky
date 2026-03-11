@@ -14,10 +14,19 @@ new #[Title('New Endpoint')] class extends Component {
     public string $name = '';
     public string $slug = '';
     public string $description = '';
+    public string $type = 'rest';
     public string $method = 'GET';
     public int $status_code = 200;
     public string $content_type = 'application/json';
     public string $response_body = '';
+
+    public function updatedType(string $value): void
+    {
+        if ($value === 'soap') {
+            $this->method = 'POST';
+            $this->content_type = 'text/xml';
+        }
+    }
 
     public function mount(): void
     {
@@ -26,6 +35,10 @@ new #[Title('New Endpoint')] class extends Component {
 
     public function save(CreateEndpoint $action): void
     {
+        if ($this->type === 'soap') {
+            $this->method = 'POST';
+        }
+
         $this->validate($this->endpointRules($this->collection->id, $this->method));
 
         $endpoint = $action->handle(
@@ -38,6 +51,7 @@ new #[Title('New Endpoint')] class extends Component {
             contentType: $this->content_type,
             description: $this->description ?: null,
             responseBody: $this->response_body ?: null,
+            type: $this->type,
         );
 
         $this->redirectRoute('endpoints.show', [$this->collection, $endpoint], navigate: true);
@@ -59,7 +73,11 @@ new #[Title('New Endpoint')] class extends Component {
 
     <div class="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800">
         <p class="text-xs font-medium text-neutral-400">URL Prefix</p>
-        <code class="text-sm">{{ $collection->mock_url_prefix }}/</code>
+        @if ($type === 'soap')
+            <code class="text-sm">{{ url('/soap/' . $collection->slug) }}/</code>
+        @else
+            <code class="text-sm">{{ $collection->mock_url_prefix }}/</code>
+        @endif
     </div>
 
     <form wire:submit="save" class="space-y-4" x-data="{ editorHasError: false }" @editor-error.window="if ($event.detail.field === 'response_body') editorHasError = $event.detail.hasError">
@@ -77,7 +95,11 @@ new #[Title('New Endpoint')] class extends Component {
             <flux:field>
                 <flux:label>Slug</flux:label>
                 <flux:input wire:model.live.debounce.300ms="slug" placeholder="e.g. get-user" />
-                <flux:description>The URL path for this endpoint: <code>{{ $collection->mock_url_prefix }}/{{ $slug ?: 'your-slug' }}</code></flux:description>
+                @if ($type === 'soap')
+                    <flux:description>The URL path for this endpoint: <code>{{ url('/soap/' . $collection->slug) }}/{{ $slug ?: 'your-slug' }}</code></flux:description>
+                @else
+                    <flux:description>The URL path for this endpoint: <code>{{ $collection->mock_url_prefix }}/{{ $slug ?: 'your-slug' }}</code></flux:description>
+                @endif
                 <flux:error name="slug" />
             </flux:field>
 
@@ -88,16 +110,31 @@ new #[Title('New Endpoint')] class extends Component {
             </flux:field>
 
             <flux:field>
-                <flux:label>Method</flux:label>
-                <flux:select wire:model="method">
-                    <flux:select.option value="GET">GET</flux:select.option>
-                    <flux:select.option value="POST">POST</flux:select.option>
-                    <flux:select.option value="PUT">PUT</flux:select.option>
-                    <flux:select.option value="PATCH">PATCH</flux:select.option>
-                    <flux:select.option value="DELETE">DELETE</flux:select.option>
+                <flux:label>Type</flux:label>
+                <flux:select wire:model.live="type">
+                    <flux:select.option value="rest">REST</flux:select.option>
+                    <flux:select.option value="soap">SOAP</flux:select.option>
                 </flux:select>
-                <flux:error name="method" />
+                <flux:error name="type" />
             </flux:field>
+
+            @if ($type === 'soap')
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950">
+                    <p class="text-sm text-amber-800 dark:text-amber-200">SOAP endpoints always use <strong>POST</strong>. Operations are routed via the <code>SOAPAction</code> header or the XML body using conditional responses.</p>
+                </div>
+            @else
+                <flux:field>
+                    <flux:label>Method</flux:label>
+                    <flux:select wire:model="method">
+                        <flux:select.option value="GET">GET</flux:select.option>
+                        <flux:select.option value="POST">POST</flux:select.option>
+                        <flux:select.option value="PUT">PUT</flux:select.option>
+                        <flux:select.option value="PATCH">PATCH</flux:select.option>
+                        <flux:select.option value="DELETE">DELETE</flux:select.option>
+                    </flux:select>
+                    <flux:error name="method" />
+                </flux:field>
+            @endif
         </flux:card>
 
         {{-- Default Response --}}
@@ -121,6 +158,7 @@ new #[Title('New Endpoint')] class extends Component {
                         <flux:select.option value="text/plain">text/plain</flux:select.option>
                         <flux:select.option value="text/html">text/html</flux:select.option>
                         <flux:select.option value="application/xml">application/xml</flux:select.option>
+                        <flux:select.option value="text/xml">text/xml</flux:select.option>
                     </flux:select>
                     <flux:error name="content_type" />
                 </flux:field>

@@ -4,12 +4,14 @@ use App\Enums\ConditionOperator;
 use App\Enums\ConditionSource;
 use App\Models\ConditionalResponse;
 use App\Services\ConditionalMatcher;
+use App\Services\SoapActionExtractor;
+use App\Services\SoapBodyParser;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 
 function matcher(): ConditionalMatcher
 {
-    return new ConditionalMatcher;
+    return new ConditionalMatcher(new SoapBodyParser, new SoapActionExtractor);
 }
 
 function makeConditional(array $attributes): ConditionalResponse
@@ -102,4 +104,75 @@ test('matches on path segment', function () {
     ]);
 
     expect(matcher()->match(makeCollection([$conditional]), $request, ['42']))->toBe($conditional);
+});
+
+test('matches on soap_action header (SOAP 1.1)', function () {
+    $request = Request::create('/soap/col/ep', 'POST', [], [], [], [
+        'HTTP_CONTENT_TYPE' => 'text/xml',
+        'HTTP_SOAPACTION' => '"urn:example#GetUser"',
+    ]);
+
+    $conditional = makeConditional([
+        'condition_source' => ConditionSource::SoapAction,
+        'condition_field' => 'soap_action',
+        'condition_operator' => ConditionOperator::Equals,
+        'condition_value' => 'urn:example#GetUser',
+        'status_code' => 200,
+    ]);
+
+    expect(matcher()->match(makeCollection([$conditional]), $request, []))->toBe($conditional);
+});
+
+test('matches on soap_body dot notation', function () {
+    $xml = <<<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <GetUser>
+              <userId>42</userId>
+            </GetUser>
+          </soap:Body>
+        </soap:Envelope>
+        XML;
+
+    $request = Request::create('/soap/col/ep', 'POST', [], [], [], [
+        'HTTP_CONTENT_TYPE' => 'text/xml',
+    ], $xml);
+
+    $conditional = makeConditional([
+        'condition_source' => ConditionSource::SoapBody,
+        'condition_field' => 'GetUser.userId',
+        'condition_operator' => ConditionOperator::Equals,
+        'condition_value' => '42',
+        'status_code' => 200,
+    ]);
+
+    expect(matcher()->match(makeCollection([$conditional]), $request, []))->toBe($conditional);
+});
+
+test('soap_body returns null for missing path', function () {
+    $xml = <<<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <GetUser>
+              <userId>42</userId>
+            </GetUser>
+          </soap:Body>
+        </soap:Envelope>
+        XML;
+
+    $request = Request::create('/soap/col/ep', 'POST', [], [], [], [
+        'HTTP_CONTENT_TYPE' => 'text/xml',
+    ], $xml);
+
+    $conditional = makeConditional([
+        'condition_source' => ConditionSource::SoapBody,
+        'condition_field' => 'GetUser.nonExistent',
+        'condition_operator' => ConditionOperator::Equals,
+        'condition_value' => '42',
+        'status_code' => 200,
+    ]);
+
+    expect(matcher()->match(makeCollection([$conditional]), $request, []))->toBeNull();
 });

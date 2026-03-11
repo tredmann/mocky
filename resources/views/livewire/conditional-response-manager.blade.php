@@ -60,12 +60,18 @@
                     <flux:field>
                         <flux:label>Source</flux:label>
                         <flux:select wire:model.live="condition_source">
-                            @if ($method !== 'GET')
-                                <flux:select.option value="body">Body</flux:select.option>
+                            @if ($endpointType === 'soap')
+                                <flux:select.option value="soap_action">SOAP Action</flux:select.option>
+                                <flux:select.option value="soap_body">SOAP Body</flux:select.option>
+                                <flux:select.option value="header">Header</flux:select.option>
+                            @else
+                                @if ($method !== 'GET')
+                                    <flux:select.option value="body">Body</flux:select.option>
+                                @endif
+                                <flux:select.option value="query">Query</flux:select.option>
+                                <flux:select.option value="header">Header</flux:select.option>
+                                <flux:select.option value="path">Path</flux:select.option>
                             @endif
-                            <flux:select.option value="query">Query</flux:select.option>
-                            <flux:select.option value="header">Header</flux:select.option>
-                            <flux:select.option value="path">Path</flux:select.option>
                         </flux:select>
                         <flux:error name="condition_source" />
                     </flux:field>
@@ -75,8 +81,11 @@
                         @if ($condition_source === 'path')
                             <flux:input wire:model="condition_field" type="number" min="0" placeholder="0" />
                             <flux:description>Segment index (0-based). {{ $endpoint->mock_url }}/foo/bar → 0=foo, 1=bar</flux:description>
+                        @elseif ($condition_source === 'soap_action')
+                            <flux:input wire:model="condition_field" value="soap_action" readonly />
+                            <flux:description>Extracted automatically from the request.</flux:description>
                         @else
-                            <flux:input wire:model="condition_field" placeholder="{{ $condition_source === 'header' ? 'e.g. X-Api-Key' : 'e.g. id' }}" />
+                            <flux:input wire:model="condition_field" placeholder="{{ $condition_source === 'header' ? 'e.g. X-Api-Key' : ($condition_source === 'soap_body' ? 'e.g. GetUser.userId' : 'e.g. id') }}" />
                         @endif
                         <flux:error name="condition_field" />
                     </flux:field>
@@ -94,7 +103,20 @@
 
                 {{-- Contextual help --}}
                 <div class="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                    @if ($condition_source === 'body')
+                    @if ($condition_source === 'soap_action')
+                        <p class="font-medium">Matching on SOAP Action</p>
+                        <p class="mt-1 text-xs">Matches the <code>SOAPAction</code> header (SOAP 1.1) or the <code>action</code> parameter in <code>Content-Type</code> (SOAP 1.2). Enter the bare action URI without surrounding quotes.</p>
+                        <div class="mt-2 font-mono text-xs">
+                            <p>SOAPAction: "urn:example#GetUser" &rarr; value: <strong>urn:example#GetUser</strong></p>
+                        </div>
+                    @elseif ($condition_source === 'soap_body')
+                        <p class="font-medium">Matching on SOAP body (XML)</p>
+                        <p class="mt-1 text-xs">Use dot notation starting from the operation element inside <code>&lt;Body&gt;</code>. Namespace prefixes are ignored.</p>
+                        <div class="mt-2 space-y-1 font-mono text-xs">
+                            <p>&lt;Body&gt;&lt;GetUser&gt;&lt;userId&gt;42&lt;/userId&gt;&lt;/GetUser&gt;&lt;/Body&gt;</p>
+                            <p>field: <strong>GetUser.userId</strong>, value: <strong>42</strong></p>
+                        </div>
+                    @elseif ($condition_source === 'body')
                         <p class="font-medium">Matching on request body (JSON)</p>
                         <p class="mt-1 text-xs">Use the JSON field name as the field. Supports dot notation for nested values.</p>
                         <div class="mt-2 space-y-1 font-mono text-xs">
@@ -147,6 +169,7 @@
                             <flux:select.option value="text/plain">text/plain</flux:select.option>
                             <flux:select.option value="text/html">text/html</flux:select.option>
                             <flux:select.option value="application/xml">application/xml</flux:select.option>
+                            <flux:select.option value="text/xml">text/xml</flux:select.option>
                         </flux:select>
                         <flux:error name="content_type" />
                     </flux:field>

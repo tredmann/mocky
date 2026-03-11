@@ -10,4 +10,6 @@ enum ConditionSource: string
     case Query = 'query';
     case Header = 'header';
     case Path = 'path';
+    case SoapBody = 'soap_body';
+    case SoapAction = 'soap_action';
 }
