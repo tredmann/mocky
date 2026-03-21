@@ -9,3 +9,4 @@ tests
 !.env.example
 docker-compose*.yml
 *.md
+database/*.sqlite
