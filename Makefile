@@ -1,4 +1,4 @@
-.PHONY: build up down down-volumes restart logs shell
+.PHONY: build up down down-volumes restart logs shell test-e2e
 
 build:
 	docker compose build
@@ -20,3 +20,6 @@ logs:
 
 shell:
 	docker compose exec app sh
+
+test-e2e:
+	npx playwright test --project=chromium

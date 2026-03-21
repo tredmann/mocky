@@ -1,0 +1,18 @@
+{
+    "name": "E2E Test Collection",
+    "description": "Created by the Playwright import e2e test",
+    "slug": "e2e-test-collection",
+    "endpoints": [
+        {
+            "name": "Health",
+            "slug": "health",
+            "method": "GET",
+            "type": "rest",
+            "is_active": true,
+            "status_code": 200,
+            "content_type": "application/json",
+            "response_body": "{\"status\":\"ok\"}",
+            "conditional_responses": []
+        }
+    ]
+}
