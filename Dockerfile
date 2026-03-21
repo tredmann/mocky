@@ -23,7 +23,7 @@ FROM dunglas/frankenphp:1-php8.5-alpine
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 
-RUN apk add --no-cache supervisor \
+RUN apk add --no-cache supervisor sqlite \
     && install-php-extensions \
     opcache \
     pcntl \
