@@ -1,5 +1,6 @@
 <?php
 
+use App\Data\CollectionData;
 use App\Services\CollectionImportService;
 use App\Services\OpenApiImportService;
 use App\Services\PostmanImportService;
@@ -66,7 +67,7 @@ new #[Title('Dashboard')] class extends Component {
                     return;
                 }
 
-                $collectionService->import(auth()->user(), $data);
+                $collectionService->import(auth()->user(), CollectionData::fromArray($data));
             }
         } catch (\InvalidArgumentException $e) {
             $this->importError = $e->getMessage();
