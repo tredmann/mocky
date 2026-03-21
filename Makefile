@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs shell
+.PHONY: build up down down-volumes restart logs shell
 
 build:
 	docker compose build
@@ -8,6 +8,9 @@ up:
 
 down:
 	docker compose down
+
+down-volumes:
+	docker compose down -v
 
 restart:
 	docker compose down && docker compose up -d
