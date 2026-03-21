@@ -40,12 +40,22 @@ composer dev                 # starts server, queue, and logs
 ### Docker
 
 ```bash
-docker compose up
+make build   # build the image
+make up      # start in detached mode
 ```
 
 The app is available at `http://localhost:8090`.
 
 The container runs migrations and caches config/routes/views automatically on startup. The SQLite database and storage are persisted in named volumes.
+
+Other make targets:
+
+| Command | Description |
+|---|---|
+| `make down` | Stop and remove containers |
+| `make restart` | Stop then start containers |
+| `make logs` | Follow container logs |
+| `make shell` | Open a shell in the app container |
 
 ## Collections
 
